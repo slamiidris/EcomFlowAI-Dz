@@ -1,41 +1,34 @@
 import { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Clapperboard, 
-  Wand2, 
-  TrendingUp, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Clapperboard,
+  Wand2,
+  TrendingUp,
+  Settings,
   LogOut,
   Menu,
   X,
   Radar,
-  Calculator,
   CalendarDays,
   Bot,
   MessageSquareQuote,
   Layers,
   Camera,
-  LineChart,
-  Send,
   Box,
   GripVertical,
   ArrowUpDown,
   Check,
   RefreshCw,
   Tag,
-  BadgeCheck,
-  ShoppingBag,
-  Store,
-  Flame,
-  Coins,
-  PackageCheck
+  Coins
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Reorder, motion } from 'framer-motion';
+import { Reorder } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
-type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings';
+type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
 
 interface SidebarProps {
   activeTab: NavItem;
@@ -51,12 +44,25 @@ const navKeyMap: Record<string, string> = {
   calculator: 'menuCalculator',
   trends: 'menuTrends',
   settings: 'menuSettings',
+  darja: 'menuDarja',
+  analyzer: 'menuAnalyzer',
+  catalog: 'menuCatalog',
+  scout: 'menuScout',
+  calendar: 'menuCalendar',
 };
 
 const defaultNavItems = [
   { id: 'dashboard', label: 'Dashboard Ventes', icon: LayoutDashboard, color: 'text-emerald-400' },
   { id: 'video', label: 'Pubs Vidéo TikTok/FB', icon: Clapperboard, color: 'text-purple-400' },
   { id: 'landing', label: 'Tunnels & Landing Page', icon: Wand2, color: 'text-blue-400' },
+  { id: 'images', label: 'Studio Photos Produit', icon: Camera, color: 'text-cyan-400' },
+  { id: 'darja', label: 'Annonces Darja', icon: MessageSquareQuote, color: 'text-lime-400' },
+  { id: 'analyzer', label: 'Consultant IA Produit', icon: Bot, color: 'text-pink-400' },
+  { id: 'catalog', label: 'Catalogue Produits', icon: Box, color: 'text-orange-400' },
+  { id: 'scout', label: 'Scout Telegram', icon: Radar, color: 'text-teal-400' },
+  { id: 'calendar', label: 'Calendrier Contenu', icon: CalendarDays, color: 'text-sky-400' },
+  { id: 'assembler', label: 'Constructeur de LP', icon: Layers, color: 'text-violet-400' },
+  { id: 'trends', label: 'Produits Gagnants', icon: TrendingUp, color: 'text-rose-400' },
   { id: 'calculator', label: 'Calculateur Marge COD', icon: Coins, color: 'text-amber-400' },
 ];
 
@@ -80,6 +86,7 @@ const getStoredNavItems = () => {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const { t, isRTL } = useLanguage();
   const toast = useToast();
+  const { user, isMock, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(true);
   const [isReorderingMode, setIsReorderingMode] = useState(false);
   const [items, setItems] = useState<typeof defaultNavItems>(getStoredNavItems);
@@ -207,6 +214,36 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       )}
 
       <div className="p-2 sm:p-3 mt-auto">
+        {user && (
+          <div className="p-2.5 glass-card border-dz-gold/25 mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-dz-emerald/30 to-dz-gold/30 border border-white/10 flex items-center justify-center text-sm font-bold text-white shrink-0 overflow-hidden">
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  (user.name || '?').charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-bold text-white truncate">{user.name}</p>
+                <p className="text-[10px] text-white/40 truncate font-mono">{user.email}</p>
+              </div>
+            </div>
+            {isOpen && (
+              <div className="mt-2 flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest">
+                <span className={cn(
+                  'px-2 py-0.5 rounded-full border',
+                  user.planStatus === 'active'
+                    ? 'bg-dz-emerald/15 text-dz-emerald border-dz-emerald/30'
+                    : 'bg-dz-dinar/15 text-dz-dinar border-dz-dinar/30'
+                )}>
+                  {user.planStatus === 'active' ? '✓ Plan actif' : user.planStatus === 'pending' ? '⏳ En attente' : 'Sans plan'}
+                </span>
+                {isMock && <span className="text-white/30">démo</span>}
+              </div>
+            )}
+          </div>
+        )}
         <div className="p-2.5 glass-card border-dz-emerald/30 mb-2 hidden md:block shadow-[0_0_15px_rgba(16,185,129,0.1)]">
           <p className="text-[9px] uppercase tracking-widest text-transparent bg-clip-text bg-linear-to-r from-dz-emerald via-emerald-400 to-dz-gold font-black mb-1">Crédits E-Com AI</p>
           <div className="flex justify-between items-end mb-1">
@@ -262,7 +299,13 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             <Settings size={16} className={cn("transition-transform group-hover:rotate-45 shrink-0", activeTab === 'settings' ? "text-dz-emerald drop-shadow-[0_0_6px_rgba(0,242,254,0.5)]" : "")} />
             {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('menuSettings', 'Paramètres')}</span>}
           </button>
-          <button className="w-full flex items-center gap-2.5 p-2 text-rose-500/60 hover:text-rose-400 transition-all rounded-xl hover:bg-rose-500/10 active:scale-95 group cursor-pointer">
+          <button
+            onClick={async () => {
+              await logout();
+              toast.success('Vous êtes déconnecté(e). À bientôt ! 👋');
+            }}
+            className="w-full flex items-center gap-2.5 p-2 text-rose-500/60 hover:text-rose-400 transition-all rounded-xl hover:bg-rose-500/10 active:scale-95 group cursor-pointer"
+          >
             <LogOut size={16} className="transition-transform group-hover:-translate-x-1 shrink-0" />
             {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('logout', 'Déconnexion')}</span>}
           </button>

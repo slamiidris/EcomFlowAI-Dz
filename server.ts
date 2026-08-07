@@ -2,12 +2,21 @@ import express from "express";
 import path from "path";
 import cors from "cors";
 import { GoogleGenAI, Type } from "@google/genai";
+import { getTelegramPulse } from "./server-telegram";
+import { registerAuthRoutes } from "./server-auth";
+
+// Keep in sync with src/services/gemini.ts MODEL_NAME.
+const MODEL_NAME = "gemini-3-flash-preview";
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increase limit for images
+
+// Auth + Google OAuth routes (landing page login, plans). Registered before
+// the SPA catch-all so /api/auth/* always reaches the handlers.
+registerAuthRoutes(app);
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -18,20 +27,11 @@ const ai = new GoogleGenAI({
   }
 });
 
-// List of real-ish Algerian e-commerce channels to monitor
-const DZ_CHANNELS = [
-  "import_algerie",
-  "grossiste_dz_shop",
-  "algiers_marketplace",
-  "vente_gros_dz",
-  "shopping_dz_store"
-];
-
 // API routes setup within startServer to keep it clean
 async function startServer() {
   try {
     // 1. API routes first
-    app.get("/api/health", (req, res) => {
+    app.get("/api/health", (_req, res) => {
       res.json({ status: "ok", env: process.env.NODE_ENV });
     });
 
@@ -69,7 +69,7 @@ async function startServer() {
         }
 
         const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: MODEL_NAME,
           contents: { parts: contents },
           config: {
             responseMimeType: "application/json",
@@ -94,14 +94,42 @@ async function startServer() {
       }
     });
 
-    // Mock endpoint that would theoretically use MTProto/Bot API
-    app.get("/api/telegram-trends", async (req, res) => {
-      res.json({
-        channels: DZ_CHANNELS,
-        status: "connected",
-        lastPulse: new Date().toISOString(),
-        rawSnippet: "Simulation of raw telegram messages from Algerie channels..."
-      });
+    // Generic Gemini proxy — keeps the API key server-side.
+    // The client builds the prompt + config and sends them here; the server
+    // performs the actual Gemini call with GEMINI_API_KEY and relays the result.
+    app.post("/api/ai/generate", async (req, res) => {
+      try {
+        const { model = MODEL_NAME, contents, config } = req.body || {};
+        if (!contents) {
+          return res.status(400).json({ error: "Missing 'contents' in request body" });
+        }
+        const response = await ai.models.generateContent({ model, contents, config });
+        res.json({
+          text: response.text ?? "",
+          candidates: response.candidates ?? [],
+          usageMetadata: response.usageMetadata ?? null,
+        });
+      } catch (error: any) {
+        console.error("AI Proxy Error:", error);
+        const errorString = String(error?.message || error || "");
+        const isQuota =
+          errorString.includes("429") ||
+          errorString.includes("RESOURCE_EXHAUSTED") ||
+          errorString.toLowerCase().includes("quota") ||
+          errorString.toLowerCase().includes("exceeded") ||
+          errorString.includes("QUOTA_EXCEEDED") ||
+          error?.status === "RESOURCE_EXHAUSTED" ||
+          error?.code === 429;
+        // Return 429 on rate-limit so the client's retry logic kicks in.
+        res.status(isQuota ? 429 : 500).json({ error: error?.message || "Gemini proxy failed" });
+      }
+    });
+
+    // Telegram product trends — real MTProto read when credentials are configured,
+    // otherwise a clearly-labeled simulation (see server-telegram.ts).
+    app.get("/api/telegram-trends", async (_req, res) => {
+      const pulse = await getTelegramPulse();
+      res.json(pulse);
     });
 
     // 2. Vite middleware (development only)

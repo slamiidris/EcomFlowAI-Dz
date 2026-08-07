@@ -1,10 +1,12 @@
-import { TrendingUp, Users, ShoppingBag, Package, Settings2, CheckCircle2, Circle, GripVertical, ArrowUpDown, RefreshCw, Check, Image as ImageIcon, Video, Layout, Trash2, Eye, Download, Copy, X, FileText, Sparkles, Clock, ExternalLink } from 'lucide-react';
+import { TrendingUp, Users, ShoppingBag, Package, Settings2, CheckCircle2, Circle, GripVertical, ArrowUpDown, RefreshCw, Check, Image as ImageIcon, Video, Layout, Trash2, Eye, Download, Copy, X, Sparkles, Clock, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { getHistory, deleteHistoryItem, clearHistory, HistoryItem } from '../lib/history';
+import { useAuth } from '../context/AuthContext';
 
 export default function DashboardHome() {
+  const { user } = useAuth();
   const [showConfig, setShowConfig] = useState(false);
   const [isReorderingMode, setIsReorderingMode] = useState(false);
   const [widgetOrder, setWidgetOrder] = useState<string[]>(['featured', 'stats', 'geo', 'prediction', 'history']);
@@ -171,7 +173,7 @@ export default function DashboardHome() {
               "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-300",
               isReorderingMode && "opacity-75 p-2 ring-2 ring-dashed ring-emerald-500/30 rounded-2xl scale-[0.99]"
             )}>
-              {stats.map((stat, i) => (
+              {stats.map((stat) => (
                 <div
                   key={stat.label}
                   className="glass-card glass-card-hover p-6 group cursor-default border-white/5 relative"
@@ -415,7 +417,7 @@ export default function DashboardHome() {
       <header className="flex justify-between items-end relative gap-4">
         <div className="min-w-0">
           <p className="text-dz-emerald text-[10px] uppercase font-black tracking-[0.3em] mb-1">Algérie Market Intelligence</p>
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter truncate">Salam, Ahmed 👋</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter truncate">Salam, {user?.name?.split(' ')[0] || 'Ahmed'} 👋</h1>
           <p className="text-white/40 text-sm md:text-base font-medium">Votre centre de commandement e-commerce propulsé par l'IA.</p>
         </div>
         <div className="flex gap-2 md:gap-3 shrink-0 mb-1">

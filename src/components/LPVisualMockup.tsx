@@ -1,15 +1,13 @@
 import { useState } from 'react';
-import { 
-  Smartphone, 
-  MapPin, 
-  Phone, 
-  User, 
-  CheckCircle2, 
-  ShieldCheck, 
-  ChevronDown, 
-  ChevronUp, 
-  ShoppingBag, 
-  Truck, 
+import {
+  Smartphone,
+  MapPin,
+  Phone,
+  User,
+  CheckCircle2,
+  ShieldCheck,
+  ShoppingBag,
+  Truck,
   Star,
   ArrowRight,
   Sparkles
@@ -46,7 +44,6 @@ export default function LPVisualMockup({
   imagePreview,
   imagePreviews = []
 }: LPVisualMockupProps) {
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [wilaya, setWilaya] = useState("");
@@ -65,8 +62,6 @@ export default function LPVisualMockup({
 
   // Derive theme colors safely
   const primaryColor = colorPalette[0] || "#10b981"; // Primary brand
-  const secondaryColor = colorPalette[1] || "#1f2937"; // Secondary structural BG/Text
-  const isDarkPrimary = false; // Styling aids
 
   const handleCheckoutFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();

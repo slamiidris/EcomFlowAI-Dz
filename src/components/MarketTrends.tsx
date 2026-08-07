@@ -1,5 +1,4 @@
-import { TrendingUp, ArrowUpRight, BarChart3, Search, ShoppingBag } from 'lucide-react';
-import { motion } from 'motion/react';
+import { TrendingUp, BarChart3, ShoppingBag } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function MarketTrends() {

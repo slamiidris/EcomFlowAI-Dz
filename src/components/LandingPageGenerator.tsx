@@ -8,9 +8,8 @@ import {
   Download, 
   Layout, 
   Image as ImageIcon, 
-  X, 
-  Wand2, 
-  ChevronDown, 
+  X,
+  ChevronDown,
   ChevronUp,
   Settings2,
   ListOrdered,
@@ -37,9 +36,6 @@ import {
   User,
   Package,
   PenTool,
-  Globe,
-  ShieldCheck,
-  ArrowLeftRight,
   Car,
   Bus,
   Plane,
@@ -52,12 +48,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
-  CopyCheck,
-  Layers,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Upload
+  CopyCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -77,9 +68,8 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { generateLandingPageCopy, analyzeProductFromImage, translateToArabic, suggestMarketingStrategy, refineLandingPageSection, suggestNicheAngles, analyzeProductAnglesFromImage, completeProductAnalysisWithAngle } from '../services/gemini';
+import { generateLandingPageCopy, translateToArabic, analyzeProductAnglesFromImage, completeProductAnalysisWithAngle } from '../services/gemini';
 import LPVisualMockup from './LPVisualMockup';
-import Markdown from 'react-markdown';
 import { cn } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
 import { addToHistory } from '../lib/history';
@@ -120,10 +110,7 @@ interface SortableSectionProps {
   section: any;
   index: number;
   totalSections?: number;
-  activeSectionTab: Record<number, 'copy' | 'prompt'>;
-  setActiveSectionTab: React.Dispatch<React.SetStateAction<Record<number, 'copy' | 'prompt'>>>;
   updateSectionField: (index: number, field: string, value: any) => void;
-  updatePrompt: (index: number, newPrompt: string) => void;
   selectedCtaIndex: Record<number, number>;
   handleCtaChange: (sectionIndex: number, variationIndex: number) => void;
   deleteSection: (index: number) => void;
@@ -131,15 +118,12 @@ interface SortableSectionProps {
   duplicateSection?: (index: number) => void;
 }
 
-const SortableSection = ({ 
-  id, 
-  section, 
-  index, 
+const SortableSection = ({
+  id,
+  section,
+  index,
   totalSections = 0,
-  activeSectionTab, 
-  setActiveSectionTab,
   updateSectionField,
-  updatePrompt,
   selectedCtaIndex,
   handleCtaChange,
   deleteSection,
@@ -165,28 +149,9 @@ const SortableSection = ({
   const toast = useToast();
   const s = section;
   const i = index;
-  const activeTab = activeSectionTab[i] || 'copy';
   const isHero = i === 0 || s.step?.toLowerCase().includes('hero') || s.narrativeRole?.toLowerCase().includes('hook');
 
-  const [instruction, setInstruction] = useState('');
-  const [refining, setRefining] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  const handleRefineSection = async () => {
-    if (!instruction) return;
-    setRefining(true);
-    try {
-      const refinedContent = await refineLandingPageSection(s.title || 'Section', s.content || '', instruction);
-      updateSectionField(i, 'content', refinedContent);
-      setInstruction('');
-      toast.success("Section affinée avec succès ! ✨");
-    } catch (e: any) {
-      console.error("Failed to refine section copy:", e);
-      toast.error("Erreur lors de l'affinage de la section.");
-    } finally {
-      setRefining(false);
-    }
-  };
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/sortable">
@@ -403,7 +368,6 @@ export default function LandingPageGenerator() {
     { id: 'الطائرات (Aviation)', label: 'الطائرات', desc: 'Avions', icon: 'plane' },
     { id: 'المنزل (Maison)', label: 'المنزل', desc: 'Maison', icon: 'home' }
   ]);
-  const [isSuggestingNiche, setIsSuggestingNiche] = useState(false);
   const [funnelStrategy, setFunnelStrategy] = useState<string>('AIDA');
   
   // Advanced parameters
@@ -431,9 +395,7 @@ export default function LandingPageGenerator() {
   const [storedImagesData, setStoredImagesData] = useState<Array<{ data: string, mimeType: string }>>([]);
 
   // Getters for backwards compatibility
-  const image = images[0] || null;
   const imagePreview = imagePreviews[0] || null;
-  const storedImageData = storedImagesData[0] || null;
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [pendingAngleSelection, setPendingAngleSelection] = useState(false);
@@ -446,8 +408,6 @@ export default function LandingPageGenerator() {
   const [layoutMode, setLayoutMode] = useState<'structure' | 'mockup'>('structure');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const [activeSectionTab, setActiveSectionTab] = useState<Record<number, 'copy' | 'prompt'>>({});
   const [selectedCtaIndex, setSelectedCtaIndex] = useState<Record<number, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -661,55 +621,6 @@ export default function LandingPageGenerator() {
   const handleSelectPalette = (palette: typeof PALETTE_PRESETS[0]) => {
     setSelectedPaletteId(palette.id);
     setColorPalette(palette.colors.join(', '));
-  };
-
-  const handleSuggestMarketing = async () => {
-    if (!productName) return;
-    setIsSuggesting(true);
-    setError(null);
-    try {
-      const suggestion = await suggestMarketingStrategy(productName, brand, category);
-      if (suggestion) {
-        if (suggestion.marketingAngle) setMarketingAngle(suggestion.marketingAngle);
-        if (suggestion.sellingPoints) setSellingPoints(suggestion.sellingPoints.join('\n'));
-        if (suggestion.description) setDescription(suggestion.description);
-        if (suggestion.targetAudience) setTargetAudience(suggestion.targetAudience);
-        if (suggestion.funnelStrategy) setFunnelStrategy(suggestion.funnelStrategy);
-        if (suggestion.productType) setProductType(suggestion.productType);
-        if (suggestion.suggestedTitle) {
-          setProductName(suggestion.suggestedTitle);
-          const translated = await translateToArabic(suggestion.suggestedTitle);
-          setProductNameAr(translated);
-        }
-      }
-    } catch (err: any) {
-      console.error("Suggestion failed:", err);
-      setError("Désolé, l'IA n'a pas pu générer de suggestions. Vérifiez votre connexion.");
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
-
-  const handleSuggestNicheAngles = async () => {
-    if (!productName) {
-      toast.error("Veuillez d'abord saisir le nom du produit en haut.");
-      return;
-    }
-    setIsSuggestingNiche(true);
-    try {
-      const suggestions = await suggestNicheAngles(productName, brand, category);
-      if (suggestions && Array.isArray(suggestions) && suggestions.length > 0) {
-        setSuggestedNicheAngles(suggestions);
-        toast.success("Angles de niche suggérés pour ce produit ! 💡");
-      } else {
-        toast.error("Aucune suggestion d'angle de niche générée par l'IA.");
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Échec de la génération des suggestions d'angles.");
-    } finally {
-      setIsSuggestingNiche(false);
-    }
   };
 
   const processFiles = async (files: FileList | File[]) => {
@@ -1065,20 +976,6 @@ export default function LandingPageGenerator() {
     toast.success("Fichier JSON exporté ! 📥");
   };
 
-  const handleTranslateName = async () => {
-    if (!productName) return;
-    setAnalyzing(true);
-    try {
-      const translated = await translateToArabic(productName);
-      setProductNameAr(translated);
-      toast.success("Nom du produit traduit en Darija ! ✍️");
-    } catch (e) {
-      toast.error("Échec de la traduction.");
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
   const updateSectionField = (index: number, field: string, value: any) => {
     if (!lpData) return;
     const newSections = [...lpData.sections];
@@ -1112,10 +1009,6 @@ export default function LandingPageGenerator() {
       badges: ['NOUVEAU', 'CONVERSION']
     };
     setLpData({ ...lpData, sections: [...lpData.sections, newSection] });
-  };
-
-  const updatePrompt = (index: number, newPrompt: string) => {
-    updateSectionField(index, 'prompt', newPrompt);
   };
 
   const handleCtaChange = (sectionIndex: number, variationIndex: number) => {
@@ -2324,10 +2217,7 @@ export default function LandingPageGenerator() {
                                 section={s}
                                 index={i}
                                 totalSections={lpData.sections.length}
-                                activeSectionTab={activeSectionTab}
-                                setActiveSectionTab={setActiveSectionTab}
                                 updateSectionField={updateSectionField}
-                                updatePrompt={updatePrompt}
                                 selectedCtaIndex={selectedCtaIndex}
                                 handleCtaChange={handleCtaChange}
                                 deleteSection={deleteSection}

@@ -13,10 +13,8 @@ import {
   Layout,
   X,
   Package,
-  Target,
   Megaphone as MegaphoneIcon,
-  Mic2,
-  List
+  Mic2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateDarjaAds } from '../services/gemini';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Send, TrendingUp, ShoppingBag, Radio, MessageSquare, ExternalLink, Loader2, Sparkles, Filter, AlertCircle, Bell, BellOff } from 'lucide-react';
+import { Search, Send, TrendingUp, ShoppingBag, Radio, ExternalLink, Loader2, Sparkles, AlertCircle, Bell, BellOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { scoutTelegramProducts, ScoutedProduct } from '../services/telegramService';
 import { cn } from '../lib/utils';
@@ -83,6 +83,14 @@ export default function TelegramProductScout() {
     }
   }, []);
 
+  // Fetch whether the Telegram backend is in live (MTProto) or simulation mode
+  useEffect(() => {
+    fetch('/api/telegram-trends')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (data) setIsLive(data.mode === 'live'); })
+      .catch(() => setIsLive(false));
+  }, []);
+
   const toggleNotifications = async () => {
     if (notificationsEnabled) {
       setNotificationsEnabled(false);
@@ -108,7 +116,8 @@ export default function TelegramProductScout() {
     item.category.toLowerCase().includes(query.toLowerCase())
   ).slice(0, 5);
 
-  const hasKeys = !!((import.meta as any).env.VITE_TELEGRAM_BOT_TOKEN || (import.meta as any).env.VITE_TELEGRAM_API_ID);
+  // True when the server reports a live MTProto connection (vs labeled simulation).
+  const [isLive, setIsLive] = useState(false);
 
   const loadingSteps = [
     "Connexion sécurisée aux passerelles Telegram...",
@@ -236,10 +245,10 @@ export default function TelegramProductScout() {
               <p className="text-white/40 text-sm font-medium">Scannez les tendances Telegram Algérie en temps réel.</p>
               <div className={cn(
                 "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5",
-                hasKeys ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-white/20 border border-white/5"
+                isLive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-white/20 border border-white/5"
               )}>
-                <div className={cn("w-1 h-1 rounded-full", hasKeys ? "bg-emerald-500 animate-pulse" : "bg-white/20")} />
-                {hasKeys ? "API Connectée" : "Simulation Active"}
+                <div className={cn("w-1 h-1 rounded-full", isLive ? "bg-emerald-500 animate-pulse" : "bg-white/20")} />
+                {isLive ? "API Connectée" : "Simulation Active"}
               </div>
             </div>
           </div>

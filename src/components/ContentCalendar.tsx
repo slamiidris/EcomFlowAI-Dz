@@ -1,11 +1,8 @@
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useState } from 'react';
 import { cn } from '../lib/utils';
 
 export default function ContentCalendar() {
-  const [currentDate] = useState(new Date());
-  
+
   const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const dates = Array.from({ length: 31 }, (_, i) => i + 1);
 

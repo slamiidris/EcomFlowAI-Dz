@@ -1,6 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
-
-const MODEL_NAME = "gemini-3-flash-preview";
+// Text generation model — single source of truth for all text AI calls.
+export const MODEL_NAME = "gemini-3-flash-preview";
+// Image generation model — separate model family (Gemini image), intentionally different.
+export const IMAGE_MODEL_NAME = "gemini-2.5-flash-image";
 
 /**
  * Repairs a truncated JSON string by parsing it and balancing open structures.
@@ -284,7 +285,7 @@ function safeParseJSON(text: string) {
       r = r.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
         return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
       });
-      r = r.replace(/":\s*"([\s\S]*?)"\s*([,}])/g, (match, p1, p2) => {
+      r = r.replace(/":\s*"([\s\S]*?)"\s*([,}])/g, (_match, p1, p2) => {
         const fixedValue = p1.replace(/(?<!\\)"/g, '\\"');
         return `": "${fixedValue}"${p2}`;
       });
@@ -305,22 +306,77 @@ function safeParseJSON(text: string) {
   return null;
 }
 
-let aiInstance: GoogleGenAI | null = null;
-export function getAI() {
-  if (aiInstance) return aiInstance;
-  const key = (import.meta as any).env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env.GEMINI_API_KEY : undefined);
-  if (!key) {
-    throw new Error("Gemini API key is required");
+// The Gemini client is now a thin proxy to the server (POST /api/ai/generate).
+// The real API key (GEMINI_API_KEY) lives server-side and is never shipped to the browser.
+async function callServerGemini(request: any) {
+  const res = await fetch('/api/ai/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!res.ok) {
+    let serverError = '';
+    try {
+      serverError = (await res.json()).error || '';
+    } catch (e) {
+      // ignore parse errors, fall through to statusText
+    }
+    const error: any = new Error(`${res.status}: ${serverError || res.statusText}`);
+    error.status = res.status;
+    throw error;
   }
-  aiInstance = new GoogleGenAI({ apiKey: key });
-  return aiInstance;
+
+  return res.json();
+}
+
+// Normalizes a chat message (string or array of parts) into an array of parts.
+function normalizeMessage(message: any) {
+  if (typeof message === 'string') return [{ text: message }];
+  if (Array.isArray(message)) return message;
+  return [{ text: String(message ?? '') }];
+}
+
+function getAI() {
+  return {
+    models: {
+      async generateContent(request: any) {
+        return callServerGemini(request);
+      },
+    },
+    chats: {
+      // Replicates the stateful chat API client-side: history is kept locally and
+      // sent in full on each turn so the server proxy stays stateless.
+      // NOTE: must stay synchronous (matches the SDK), callers assign the result directly.
+      create({ model, history = [], config = {} }: any) {
+        const messages: any[] = [...history];
+        return {
+          async sendMessage({ message }: any) {
+            const userParts = normalizeMessage(message);
+            const contents = [
+              ...messages.map((m: any) => ({
+                role: m.role === 'model' ? 'model' : 'user',
+                parts: Array.isArray(m.parts) ? m.parts : [{ text: m.text ?? '' }],
+              })),
+              { role: 'user', parts: userParts },
+            ];
+            const response = await callServerGemini({ model, contents, config });
+            const text = response.text ?? '';
+            messages.push({ role: 'user', parts: userParts });
+            messages.push({ role: 'model', parts: [{ text }] });
+            return response;
+          },
+        };
+      },
+    },
+  };
 }
 
 /**
  * Helper to call Gemini with exponential backoff retry logic for 429 (rate limit) errors.
  */
 export async function callGeminiWithRetry(
-  callFn: (ai: GoogleGenAI) => Promise<any>,
+  callFn: (ai: ReturnType<typeof getAI>) => Promise<any>,
   maxRetries = 10,
   initialDelay = 5000
 ) {
@@ -811,7 +867,7 @@ export async function generateProductImage(productName: string, style: string = 
   try {
     return await callGeminiWithRetry(async (ai) => {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image",
+        model: IMAGE_MODEL_NAME,
         contents: `Generate a professional product photo for: ${productName}. 
         Style: ${style}. 
         Mandatory Aspect Ratio: --ar ${aspectRatio}. 
@@ -1074,83 +1130,6 @@ export async function generatePricingStrategy(productName: string, productCost: 
     });
     
     return safeParseJSON(response.text || "{}");
-  });
-}
-
-export async function analyzeProductImage(base64Image: string, mimeType: string) {
-  return callGeminiWithRetry(async (ai) => {
-    const prompt = `
-      En tant qu'expert en branding et marketing e-commerce, analyse cette image de produit en suivant STRICTEMENT cette structure de réponse. 
-      Adapte l'analyse spécifiquement pour le marché algérien (COD/Streetwear/Luxe/Utilité).
-
-      ### 📦 Identification du Produit
-      - **Nom du Produit :** [Nom précis et accrocheur]
-      - **Marque :** [Marque identifiée ou type de branding suggéré]
-      - **Catégorie :** Tu DOIS classer le produit dans l'une de ces 4 catégories : [vêtement | accessoire | gadget technologique | article ménager].
-      - **Type de Produit :** [Détail précis du set ou de l'unité]
-
-      ### 🎨 Influence de la Catégorie
-      Explique brièvement comment la catégorie détectée (vêtement, accessoire, gadget tech, ou article ménager) influence ton choix de styles visuels et de layouts marketing.
-
-      ### 💎 Argumentaire & Cible
-      - **Points de Vente :** 
-        - [Argument marketing n°1]
-        - [Argument marketing n°2]
-        - [Argument marketing n°3]
-        - [Argument marketing n°4]
-        - [Argument marketing n°5]
-      - **Public Cible :** [Description précise démographique et intérêts en Algérie]
-
-      ### 🎨 Identité Visuelle & Couleurs
-      - **Palette de Couleurs :**
-        - **Dominante :** [Nom de la couleur] ([Code HEX])
-        - **Accentuation :** [Nom de la couleur] ([Code HEX])
-
-      ### ⚙️ Spécifications Techniques
-      - **Composition :** [Matières perçues]
-      - **Texture :** [Aspect tactile]
-      - **Design :** [Détails de conception]
-      - **Entretien :** [Conseils d'entretien]
-
-      ### 🌍 Localisation
-      - **Langue du texte suggérée :** 🇩🇿 العربية (Arabe) / Français
-
-      ### 📸 Recommandations de Styles Visuels
-      1. **[Nom du Style 1]** : [Description courte] | *Tags: [X, Y]*
-      2. **[Nom du Style 2]** : [Description courte] | *Tags: [X, Y]*
-      3. **[Nom du Style 3]** : [Description courte] | *Tags: [X, Y]*
-
-      ### 📐 Dispositions de Texte (Marketing Layouts)
-      1. **[Concept 1]** : [Description] | *Impact: [Effet]*
-      2. **[Concept 2]** : [Description] | *Impact: [Effet]*
-      3. **[Concept 3]** : [Description] | *Impact: [Effet]*
-
-      ### 🚀 Plan d'Action Marketing (Stratégie Algérie)
-      - **Positionnement :** [Stratégie de différenciation]
-      - **Offre Irrésistible :** [Promotion recommandée]
-      
-      ### 📱 Idées de Contenu (Posts & Vidéos)
-      - [Idée 1]
-      - [Idée 2]
-      - [Idée 3]
-
-      ### ⚡ Optimisation Page Produit
-      - [Conseil CRO 1]
-      - [Conseil CRO 2]
-
-      Reste extrêmement précis, utilisez un ton d'expert consultant et assure-toi que les codes couleurs sont cohérents avec l'image.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: [
-        { text: prompt },
-        { inlineData: { data: base64Image, mimeType } }
-      ],
-      config: { maxOutputTokens: 8192 }
-    });
-    
-    return response.text || "Désolé, je n'ai pas pu analyser l'image.";
   });
 }
 

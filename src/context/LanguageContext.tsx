@@ -120,6 +120,31 @@ export const translations: TranslationDictionary = {
     ar: "⚙️ إعدادات المتجر والبكسل",
     en: "⚙️ Store & Pixel Settings",
   },
+  tabDarja: {
+    fr: "📝 Générateur d'Annonces Darja",
+    ar: "📝 مولد إعلانات الدارجة",
+    en: "📝 Darija Ad Copy Generator",
+  },
+  tabAnalyzer: {
+    fr: "🤖 Consultant Expert IA (Analyse Produit)",
+    ar: "🤖 مستشار الخبراء بالذكاء الاصطناعي لتحليل المنتجات",
+    en: "🤖 AI Expert Product Consultant",
+  },
+  tabCatalog: {
+    fr: "📦 Catalogue & Gestion Produits",
+    ar: "📦 كتالوج وإدارة المنتجات",
+    en: "📦 Product Catalog & Management",
+  },
+  tabScout: {
+    fr: "🔍 Scout de Produits Telegram",
+    ar: "🔍 مستكشف منتجات التلغرام",
+    en: "🔍 Telegram Product Scout",
+  },
+  tabCalendar: {
+    fr: "🗓️ Calendrier de Contenu E-Com",
+    ar: "🗓️ تقويم محتوى التجارة الإلكترونية",
+    en: "🗓️ E-Com Content Calendar",
+  },
 
   // Sidebar Menu Items
   menuPhotos: {
@@ -161,6 +186,31 @@ export const translations: TranslationDictionary = {
     fr: "Boutique & Pixels",
     ar: "إعدادات المتجر",
     en: "Store Settings",
+  },
+  menuDarja: {
+    fr: "Annonces Darja",
+    ar: "إعلانات الدارجة",
+    en: "Darija Ads",
+  },
+  menuAnalyzer: {
+    fr: "Consultant IA Produit",
+    ar: "مستشار المنتجات بالذكاء الاصطناعي",
+    en: "AI Product Consultant",
+  },
+  menuCatalog: {
+    fr: "Catalogue Produits",
+    ar: "كتالوج المنتجات",
+    en: "Product Catalog",
+  },
+  menuScout: {
+    fr: "Scout Telegram",
+    ar: "ماسح التلغرام",
+    en: "Telegram Scout",
+  },
+  menuCalendar: {
+    fr: "Calendrier Contenu",
+    ar: "تقويم المحتوى",
+    en: "Content Calendar",
   },
   menuReorderText: {
     fr: "👉 Glisser pour trier",

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Bot, User, Loader2, Sparkles, AlertTriangle, Image as ImageIcon, X, TrendingUp, BarChart3, Scale, Layout, Megaphone, Video, Banknote, Search, Link as LinkIcon, FileText, Copy, Check, ChevronDown, ChevronUp, Download, Share2, Wand2, History, Plus, Trash2, Archive, ChevronRight, Target, Camera, Settings, ArrowLeftRight, ShieldCheck, ShoppingBag, Radio } from 'lucide-react';
+import { MessageSquare, Send, Bot, User, Loader2, Sparkles, Image as ImageIcon, X, TrendingUp, BarChart3, Scale, Layout, Megaphone, Video, Banknote, Search, Link as LinkIcon, FileText, Copy, Check, ChevronDown, ChevronUp, Download, History, Plus, Trash2, Archive, ChevronRight, Target, Camera, Settings, ArrowLeftRight, ShieldCheck, ShoppingBag, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createExpertChat, getAI, analyzeMarket, compareWithCompetitor, generateLandingPageCopy, generateDarjaAds, generateVideoAdScript, generatePricingStrategy, analyzeProductImage, generateProductPageOptimizations, analyzeProductFromImage } from '../services/gemini';
+import { createExpertChat, analyzeMarket, compareWithCompetitor, generateLandingPageCopy, generateDarjaAds, generateVideoAdScript, generatePricingStrategy, generateProductPageOptimizations, analyzeProductFromImage } from '../services/gemini';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 
@@ -366,7 +366,7 @@ function MarketingBrief({ data }: { data: MarketingBriefData }) {
         ))}
         
         {data.sections && data.sections.map((section, i) => (
-          <BriefSectionCardUI key={i} section={section} index={i} />
+          <BriefSectionCardUI key={i} section={section} />
         ))}
 
         {data.scenes && data.scenes.map((scene: any, i: number) => (
@@ -384,7 +384,7 @@ function MarketingBrief({ data }: { data: MarketingBriefData }) {
   );
 }
 
-function BriefSectionCardUI({ section, index }: { section: any; index: number }) {
+function BriefSectionCardUI({ section }: { section: any }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
 

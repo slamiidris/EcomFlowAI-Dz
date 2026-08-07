@@ -9,7 +9,10 @@ import Sidebar from './components/Sidebar';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
 import { cn } from './lib/utils';
-import { Loader2, Sun, Moon, HelpCircle, X, Sparkles, BookOpen, ChevronRight, Gift, Percent, Compass } from 'lucide-react';
+import { Loader2, Sun, Moon, HelpCircle, X, Sparkles, BookOpen, Percent, Compass } from 'lucide-react';
+import { useAuth, PlanId } from './context/AuthContext';
+import LandingPage from './components/LandingPage';
+import PlanCheckout from './components/PlanCheckout';
 
 // Lazy load components
 const DashboardHome = lazy(() => import('./components/DashboardHome'));
@@ -20,17 +23,26 @@ const MarketTrends = lazy(() => import('./components/MarketTrends'));
 const ProductImageGen = lazy(() => import('./components/ProductImageGen'));
 const MarginCalculator = lazy(() => import('./components/MarginCalculator'));
 const Settings = lazy(() => import('./components/Settings'));
+const DarjaAdGenerator = lazy(() => import('./components/DarjaAdGenerator'));
+const ProductAnalyzer = lazy(() => import('./components/ProductAnalyzer'));
+const ProductCatalog = lazy(() => import('./components/ProductCatalog'));
+const TelegramProductScout = lazy(() => import('./components/TelegramProductScout'));
+const ContentCalendar = lazy(() => import('./components/ContentCalendar'));
 
-type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings';
+type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
 
 export default function App() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<NavItem>('dashboard');
   const [visitedTabs, setVisitedTabs] = useState<Set<NavItem>>(new Set(['dashboard']));
   const [showGuide, setShowGuide] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
   const mainRef = useRef<HTMLElement>(null);
-  
+
+  const { user, loading } = useAuth();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
+
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') !== 'light';
   });
@@ -42,6 +54,18 @@ export default function App() {
     window.addEventListener('nav-change', handleNavChange);
     return () => window.removeEventListener('nav-change', handleNavChange);
   }, []);
+
+  // After login, resume a plan chosen on the landing page.
+  useEffect(() => {
+    if (user) {
+      const intent = sessionStorage.getItem('dz_plan_intent') as PlanId | null;
+      if (intent) {
+        sessionStorage.removeItem('dz_plan_intent');
+        setCheckoutPlan(intent);
+        setCheckoutOpen(true);
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -94,7 +118,27 @@ export default function App() {
     calculator: <MarginCalculator />,
     trends: <MarketTrends />,
     settings: <Settings />,
+    darja: <DarjaAdGenerator />,
+    analyzer: <ProductAnalyzer />,
+    catalog: <ProductCatalog />,
+    scout: <TelegramProductScout />,
+    calendar: <ContentCalendar />,
   }), []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#030712] text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-dz-emerald to-dz-gold flex items-center justify-center text-2xl">🛍️</div>
+          <Loader2 className="animate-spin text-dz-emerald" size={22} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
 
   return (
     <div className="flex h-screen bg-[#030712] font-sans antialiased overflow-hidden relative">
@@ -117,7 +161,25 @@ export default function App() {
           className="flex-1 overflow-y-auto relative p-2 sm:p-4 md:p-8"
         >
           <div className="max-w-none mx-auto relative glass-main p-3 sm:p-6 md:p-10 min-h-[calc(100vh-4rem)]">
-            
+            {(!user.plan || user.planStatus !== 'active') && (
+              <div className="mb-3 sm:mb-5 flex items-center justify-between gap-3 rounded-2xl border border-dz-dinar/30 bg-dz-dinar/[0.06] px-4 py-2.5">
+                <p className="text-[11px] sm:text-xs text-white/70 flex items-center gap-2">
+                  {user.planStatus === 'pending' ? (
+                    <>⏳ Paiement <span className="text-dz-dinar font-semibold">en attente de vérification</span> — envoie ta facture à l'admin pour activer l'accès.</>
+                  ) : (
+                    <>✨ Aucun plan actif — <span className="text-dz-dinar font-semibold">abonne-toi</span> pour débloquer les 12 outils IA.</>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setCheckoutPlan(null); setCheckoutOpen(true); }}
+                  className="shrink-0 rounded-lg bg-dz-dinar/20 border border-dz-dinar/40 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-dz-dinar hover:bg-dz-dinar/30 transition-colors cursor-pointer"
+                >
+                  Voir les plans
+                </button>
+              </div>
+            )}
+
             {/* Global Top Navigation / Header Bar */}
             <div className="flex flex-col gap-2 sm:gap-4 border-b border-white/10 pb-2 sm:pb-4 mb-3 sm:mb-6" id="app-global-topbar">
               {/* Row 1: Active Tab Title & Controls */}
@@ -136,6 +198,11 @@ export default function App() {
                     {activeTab === 'calculator' && t('tabCalculator', '🧮 Calculateur de Marge COD & Profit')}
                     {activeTab === 'trends' && t('tabTrends', '📈 Détecteur de Produits Gagnants (Winning Products)')}
                     {activeTab === 'settings' && t('tabSettings', '⚙️ Configuration Boutique & Pixels')}
+                    {activeTab === 'darja' && t('tabDarja', '📝 Générateur d\'Annonces Darja')}
+                    {activeTab === 'analyzer' && t('tabAnalyzer', '🤖 Consultant Expert IA (Analyse Produit)')}
+                    {activeTab === 'catalog' && t('tabCatalog', '📦 Catalogue & Gestion Produits')}
+                    {activeTab === 'scout' && t('tabScout', '🔍 Scout de Produits Telegram')}
+                    {activeTab === 'calendar' && t('tabCalendar', '🗓️ Calendrier de Contenu E-Com')}
                   </span>
                 </div>
                 
@@ -534,6 +601,8 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      <PlanCheckout open={checkoutOpen} initialPlan={checkoutPlan} onClose={() => setCheckoutOpen(false)} />
     </div>
   );
 }

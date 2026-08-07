@@ -22,7 +22,6 @@ import {
   Coins,
   Flame,
   Zap,
-  HelpCircle,
   PlayCircle,
   Image as ImageIcon,
   UploadCloud,
@@ -37,7 +36,6 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Eye,
   ListOrdered,
   MessageSquare,
   PenTool
@@ -63,7 +61,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { generateVideoAdScript, analyzeProductFromImage } from '../services/gemini';
 import { useToast } from '../context/ToastContext';
-import { cn } from '../lib/utils';
 import PromptField from './PromptField';
 
 interface SortableSceneCardProps {

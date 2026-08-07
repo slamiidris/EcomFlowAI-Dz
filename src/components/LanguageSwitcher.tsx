@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Check, ChevronDown, RotateCw } from 'lucide-react';
 import { useLanguage, Language } from '../context/LanguageContext';

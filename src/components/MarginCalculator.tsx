@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, TrendingUp, AlertCircle, DollarSign } from 'lucide-react';
+import { Calculator, TrendingUp, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 

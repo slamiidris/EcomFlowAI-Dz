@@ -1,20 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
-import { 
-  Upload, 
-  Trash2, 
-  ArrowUp, 
-  ArrowDown, 
-  Download, 
-  FileImage, 
-  Plus, 
+import { useState, useRef } from 'react';
+import {
+  Upload,
+  Trash2,
+  Download,
+  FileImage,
+  Plus,
   Loader2,
   Layers,
   Sparkles,
-  ChevronRight,
   Maximize2,
   Check,
   Settings2,
-  FileDown,
   Eye,
   Type,
   ImageIcon
@@ -55,11 +51,10 @@ interface ExportOptions {
   quality: number;
 }
 
-function SortableItem({ section, index, removeSection, totalSections }: { 
-  section: SectionImage, 
-  index: number, 
-  removeSection: (id: string) => void,
-  totalSections: number
+function SortableItem({ section, index, removeSection }: {
+  section: SectionImage,
+  index: number,
+  removeSection: (id: string) => void
 }) {
   const {
     attributes,
@@ -618,11 +613,10 @@ export default function LandingAssembler() {
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                               >
-                                <SortableItem 
-                                  section={section} 
-                                  index={index} 
+                                <SortableItem
+                                  section={section}
+                                  index={index}
                                   removeSection={removeSection}
-                                  totalSections={sections.length}
                                 />
                               </motion.div>
                             ))}
