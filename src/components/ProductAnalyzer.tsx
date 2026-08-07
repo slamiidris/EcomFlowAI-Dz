@@ -3,6 +3,7 @@ import { MessageSquare, Send, Bot, User, Loader2, Sparkles, Image as ImageIcon, 
 import { motion, AnimatePresence } from 'motion/react';
 import { createExpertChat, analyzeMarket, compareWithCompetitor, generateLandingPageCopy, generateDarjaAds, generateVideoAdScript, generatePricingStrategy, generateProductPageOptimizations, analyzeProductFromImage } from '../services/gemini';
 import { cn } from '../lib/utils';
+import { chatSessionsApi, preferencesApi } from '../services/api';
 import Markdown from 'react-markdown';
 
 interface BriefVisual {
@@ -1118,10 +1119,24 @@ interface ChatSession {
   updatedAt: number;
 }
 
+// Normalise server/localStorage chat sessions into the local ChatSession shape.
+function migrateChatSessions(list: any[]): ChatSession[] {
+  return list.map((session: any) => ({
+    id: session.id,
+    title: session.title || "Nouvelle Analyse",
+    messages: Array.isArray(session.messages) ? session.messages : [],
+    updatedAt: typeof session.updatedAt === 'number' ? session.updatedAt : new Date(session.updatedAt).getTime(),
+  }));
+}
+
 export default function ProductAnalyzer() {
   const [activeTab, setActiveTab] = useState<'chat' | 'history'>('chat');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  // IDs already known to exist on the server — used to pick create vs update.
+  const apiKnownIds = useRef<Set<string>>(new Set());
+  // Local IDs with a create request currently in flight — prevents duplicate creates.
+  const pendingCreates = useRef<Set<string>>(new Set());
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', content: "Salam ! Je suis votre consultant expert en E-commerce. Quel produit souhaitez-vous analyser aujourd'hui pour optimiser vos ventes sur le marché algérien ? Vous pouvez également m'envoyer une photo du produit pour une analyse visuelle immédiate.", timestamp: Date.now() }
   ]);
@@ -1160,52 +1175,104 @@ export default function ProductAnalyzer() {
   };
 
   useEffect(() => {
-    try {
-      // Load sessions from localStorage
-      const saved = localStorage.getItem('ecommerce_expert_sessions');
-      const lastActiveId = localStorage.getItem('ecommerce_expert_last_active_session_id');
-      
-      let initialSessions: ChatSession[] = [];
-      if (saved) {
-        initialSessions = JSON.parse(saved);
-        setSessions(initialSessions);
-      }
+    let cancelled = false;
+    (async () => {
+      let loaded = false;
+      try {
+        // Load sessions from the server API first
+        const res = await chatSessionsApi.list();
+        if (cancelled) return;
+        const list: any[] = Array.isArray(res) ? res : ((res as any)?.sessions ?? []);
+        if (Array.isArray(list)) {
+          const initialSessions = migrateChatSessions(list);
+          setSessions(initialSessions);
+          initialSessions.forEach(s => apiKnownIds.current.add(s.id));
+          loaded = true;
 
-      // Restore last active session if exists
-      if (lastActiveId && initialSessions.length > 0) {
-        const lastSession = initialSessions.find(s => s.id === lastActiveId);
-        if (lastSession) {
-          setMessages(lastSession.messages);
-          setCurrentSessionId(lastSession.id);
-          
-          // Map internal messages to Gemini history format
-          const history = lastSession.messages.map(m => ({
-            role: m.role === 'model' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-          }));
-          
-          const newChat = createExpertChat(history);
+          // Restore last active session if exists (preferences first, then localStorage)
+          let lastActiveId: string | null = null;
+          try {
+            const prefs = await preferencesApi.get();
+            if (cancelled) return;
+            lastActiveId = prefs?.lastChatActiveId || null;
+          } catch (e) {
+            console.error("Failed to load last active chat from API", e);
+          }
+          if (!lastActiveId) {
+            lastActiveId = localStorage.getItem('ecommerce_expert_last_active_session_id');
+          }
+          if (lastActiveId && initialSessions.length > 0) {
+            const lastSession = initialSessions.find(s => s.id === lastActiveId);
+            if (lastSession) {
+              setMessages(lastSession.messages);
+              setCurrentSessionId(lastSession.id);
+              // Map internal messages to Gemini history format
+              const history = lastSession.messages.map(m => ({
+                role: m.role === 'model' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+              }));
+              const newChat = createExpertChat(history);
+              setChat(newChat);
+              return;
+            }
+          }
+          const newChat = createExpertChat();
           setChat(newChat);
           return;
         }
+      } catch (error) {
+        console.error("Failed to initialize chat from API:", error);
       }
+      if (cancelled || loaded) return;
 
-      const newChat = createExpertChat();
-      setChat(newChat);
-    } catch (error) {
-      console.error("Failed to initialize chat:", error);
-    }
+      // Fallback to localStorage
+      try {
+        const saved = localStorage.getItem('ecommerce_expert_sessions');
+        const lastActiveId = localStorage.getItem('ecommerce_expert_last_active_session_id');
+        let initialSessions: ChatSession[] = [];
+        if (saved) {
+          initialSessions = migrateChatSessions(JSON.parse(saved));
+          setSessions(initialSessions);
+        }
+
+        // Restore last active session if exists
+        if (lastActiveId && initialSessions.length > 0) {
+          const lastSession = initialSessions.find(s => s.id === lastActiveId);
+          if (lastSession) {
+            setMessages(lastSession.messages);
+            setCurrentSessionId(lastSession.id);
+            const history = lastSession.messages.map(m => ({
+              role: m.role === 'model' ? 'model' : 'user',
+              parts: [{ text: m.content }]
+            }));
+            const newChat = createExpertChat(history);
+            setChat(newChat);
+            return;
+          }
+        }
+        const newChat = createExpertChat();
+        setChat(newChat);
+      } catch (error) {
+        console.error("Failed to initialize chat:", error);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Save sessions and last active session ID to localStorage
+  // Save sessions to localStorage (offline resilience)
   useEffect(() => {
     localStorage.setItem('ecommerce_expert_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  // Persist the last active session id (dual-write: localStorage + API)
+  useEffect(() => {
     if (currentSessionId) {
       localStorage.setItem('ecommerce_expert_last_active_session_id', currentSessionId);
+      preferencesApi.update({ lastChatActiveId: currentSessionId }).catch(() => {});
     } else {
       localStorage.removeItem('ecommerce_expert_last_active_session_id');
     }
-  }, [sessions, currentSessionId]);
+  }, [currentSessionId]);
 
   // Periodic auto-save every 30 seconds
   useEffect(() => {
@@ -1235,6 +1302,29 @@ export default function ProductAnalyzer() {
         updatedAt: Date.now()
       }, ...filtered];
     });
+
+    // Persist the session to the server API (fire-and-forget)
+    const title = sessionTitle + (sessionTitle.length >= 40 ? '...' : '');
+    if (apiKnownIds.current.has(sessionId)) {
+      chatSessionsApi.update(sessionId, { title, messages }).catch(() => {});
+    } else if (!pendingCreates.current.has(sessionId)) {
+      pendingCreates.current.add(sessionId);
+      chatSessionsApi.create({ title, messages })
+        .then((res: any) => {
+          const serverSession = res?.session || res;
+          const serverId = serverSession?.id;
+          if (serverId && serverId !== sessionId) {
+            // Re-key the local session to the server-generated id
+            apiKnownIds.current.add(serverId);
+            setCurrentSessionId(prev => (prev === sessionId ? serverId : prev));
+            setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, id: serverId } : s)));
+          } else {
+            apiKnownIds.current.add(sessionId);
+          }
+        })
+        .catch(() => {})
+        .finally(() => pendingCreates.current.delete(sessionId));
+    }
   };
 
   const loadSession = (session: ChatSession) => {
@@ -1254,9 +1344,12 @@ export default function ProductAnalyzer() {
   const deleteSession = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSessions(prev => prev.filter(s => s.id !== id));
+    apiKnownIds.current.delete(id);
+    pendingCreates.current.delete(id);
     if (currentSessionId === id) {
       setCurrentSessionId(null);
     }
+    chatSessionsApi.delete(id).catch(() => {});
   };
 
   const startNewChat = () => {
@@ -1632,11 +1725,13 @@ export default function ProductAnalyzer() {
                   />
                 </div>
                 {sessions.length > 0 && (
-                   <button 
+                   <button
                      onClick={() => {
                         if (confirm("Voulez-vous vraiment supprimer tout l'historique ?")) {
                            setSessions([]);
+                           apiKnownIds.current.clear();
                            localStorage.removeItem('ecommerce_expert_sessions');
+                           sessions.forEach(s => chatSessionsApi.delete(s.id).catch(() => {}));
                         }
                      }}
                      className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 border border-red-500/20 shadow-lg shadow-red-500/5 group"

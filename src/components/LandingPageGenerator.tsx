@@ -73,6 +73,7 @@ import LPVisualMockup from './LPVisualMockup';
 import { cn } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
 import { addToHistory } from '../lib/history';
+import { lpSessionsApi, preferencesApi } from '../services/api';
 import PromptField from './PromptField';
 
 interface LPSession {
@@ -103,6 +104,24 @@ interface LPSession {
     aspectRatio: string;
     lpData: any | null;
   }
+}
+
+// Normalise server/localStorage sessions and ensure all restored sections have IDs for dnd-kit.
+function migrateLpSessions(list: any[]): LPSession[] {
+  return list.map((session: any) => ({
+    ...session,
+    updatedAt: typeof session.updatedAt === 'number' ? session.updatedAt : new Date(session.updatedAt).getTime(),
+    state: {
+      ...session.state,
+      lpData: session.state?.lpData ? {
+        ...session.state.lpData,
+        sections: session.state.lpData.sections?.map((s: any, idx: number) => ({
+          ...s,
+          id: s.id || `restored-${idx}-${Date.now()}`
+        })) || []
+      } : null
+    }
+  }));
 }
 
 interface SortableSectionProps {
@@ -349,6 +368,10 @@ export default function LandingPageGenerator() {
   const [activeTab, setActiveTab] = useState<'editor' | 'history'>('editor');
   const [sessions, setSessions] = useState<LPSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  // IDs already known to exist on the server — used to pick create vs update.
+  const apiKnownIds = useRef<Set<string>>(new Set());
+  // Local IDs with a create request currently in flight — prevents duplicate creates.
+  const pendingCreates = useRef<Set<string>>(new Set());
   const [historySearch, setHistorySearch] = useState('');
   const [productName, setProductName] = useState('');
   const [productNameAr, setProductNameAr] = useState('');
@@ -468,49 +491,76 @@ export default function LandingPageGenerator() {
     }
   };
 
-  // Load sessions on mount
+  // Load sessions on mount (server API first, localStorage as fallback)
   useEffect(() => {
-    const saved = localStorage.getItem('dzads_lp_sessions');
-    const lastActiveId = localStorage.getItem('dzads_lp_last_active_id');
-    
-    if (saved) {
+    let cancelled = false;
+    (async () => {
+      let loaded = false;
       try {
-        const parsed = JSON.parse(saved);
-        // Ensure all restored sections have IDs for dnd-kit
-        const migrated = parsed.map((session: LPSession) => ({
-          ...session,
-          state: {
-            ...session.state,
-            lpData: session.state.lpData ? {
-              ...session.state.lpData,
-              sections: session.state.lpData.sections?.map((s: any, idx: number) => ({
-                ...s,
-                id: s.id || `restored-${idx}-${Date.now()}`
-              })) || []
-            } : null
+        const res = await lpSessionsApi.list();
+        if (cancelled) return;
+        const list: any[] = Array.isArray(res) ? res : ((res as any)?.sessions ?? []);
+        if (Array.isArray(list)) {
+          const migrated = migrateLpSessions(list);
+          setSessions(migrated);
+          migrated.forEach(s => apiKnownIds.current.add(s.id));
+          loaded = true;
+
+          // Restore the last active session (preferences first, then localStorage)
+          let lastActiveId: string | null = null;
+          try {
+            const prefs = await preferencesApi.get();
+            if (cancelled) return;
+            lastActiveId = prefs?.lastLpActiveId || null;
+          } catch (e) {
+            console.error("Failed to load last active LP from API", e);
           }
-        }));
-        setSessions(migrated);
-        
-        if (lastActiveId) {
-          const lastSession = migrated.find((s: LPSession) => s.id === lastActiveId);
-          if (lastSession) {
-            restoreSession(lastSession);
+          if (!lastActiveId) {
+            lastActiveId = localStorage.getItem('dzads_lp_last_active_id');
           }
+          if (lastActiveId) {
+            const lastSession = migrated.find((s: LPSession) => s.id === lastActiveId);
+            if (lastSession) restoreSession(lastSession);
+          }
+          return;
         }
       } catch (e) {
-        console.error("Failed to load sessions", e);
+        console.error("Failed to load sessions from API", e);
       }
-    }
+      if (cancelled || loaded) return;
+
+      // Fallback to localStorage
+      const saved = localStorage.getItem('dzads_lp_sessions');
+      const lastActiveId = localStorage.getItem('dzads_lp_last_active_id');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const migrated = migrateLpSessions(parsed);
+          setSessions(migrated);
+          if (lastActiveId) {
+            const lastSession = migrated.find((s: LPSession) => s.id === lastActiveId);
+            if (lastSession) restoreSession(lastSession);
+          }
+        } catch (e) {
+          console.error("Failed to load sessions", e);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Save sessions whenever they change
+  // Save sessions whenever they change (localStorage stays for offline resilience)
   useEffect(() => {
     localStorage.setItem('dzads_lp_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  // Persist the last active session id (dual-write)
+  useEffect(() => {
     if (currentSessionId) {
       localStorage.setItem('dzads_lp_last_active_id', currentSessionId);
+      preferencesApi.update({ lastLpActiveId: currentSessionId }).catch(() => {});
     }
-  }, [sessions, currentSessionId]);
+  }, [currentSessionId]);
 
   // Periodic auto-save every 30 seconds
   useEffect(() => {
@@ -543,6 +593,29 @@ export default function LandingPageGenerator() {
         state: newState
       }, ...filtered];
     });
+
+    // Persist the session to the server API (fire-and-forget)
+    const payload = { title: productName || "Sans Titre", state: newState };
+    if (apiKnownIds.current.has(sessionId)) {
+      lpSessionsApi.update(sessionId, payload).catch(() => {});
+    } else if (!pendingCreates.current.has(sessionId)) {
+      pendingCreates.current.add(sessionId);
+      lpSessionsApi.create(payload)
+        .then((res: any) => {
+          const serverSession = res?.session || res;
+          const serverId = serverSession?.id;
+          if (serverId && serverId !== sessionId) {
+            // Re-key the local session to the server-generated id
+            apiKnownIds.current.add(serverId);
+            setCurrentSessionId(prev => (prev === sessionId ? serverId : prev));
+            setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, id: serverId } : s)));
+          } else {
+            apiKnownIds.current.add(sessionId);
+          }
+        })
+        .catch(() => {})
+        .finally(() => pendingCreates.current.delete(sessionId));
+    }
   };
 
   const restoreSession = (session: LPSession) => {
@@ -580,9 +653,12 @@ export default function LandingPageGenerator() {
   const deleteSession = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSessions(prev => prev.filter(s => s.id !== id));
+    apiKnownIds.current.delete(id);
+    pendingCreates.current.delete(id);
     if (currentSessionId === id) {
       setCurrentSessionId(null);
     }
+    lpSessionsApi.delete(id).catch(() => {});
   };
 
   const startNewSession = () => {

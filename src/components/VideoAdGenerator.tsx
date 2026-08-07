@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addToHistory } from '../lib/history';
+import { preferencesApi } from '../services/api';
 import { 
   DndContext, 
   closestCenter, 
@@ -264,31 +265,49 @@ export default function VideoAdGenerator() {
   const [features, setFeatures] = useState('');
   const [price, setPrice] = useState('2900 DA');
 
-  // Load restored script from localStorage on mount
+  // Load restored script from the API on mount (localStorage stays as fallback)
   useEffect(() => {
-    const saved = localStorage.getItem('dzads_last_generated_script');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const actualResult = parsed.result || parsed.payload || parsed;
-        if (actualResult && (actualResult.scenes || actualResult.title)) {
-          setResult(actualResult);
-        }
-        if (parsed.productName) setProductName(parsed.productName);
-        if (parsed.features) setFeatures(parsed.features);
-        if (parsed.price) setPrice(parsed.price);
-        if (parsed.painPoint) setPainPoint(parsed.painPoint);
-        if (parsed.customAngle) setCustomAngle(parsed.customAngle);
-        if (parsed.hookType) setHookType(parsed.hookType);
-        if (parsed.targetMarket) setTargetMarket(parsed.targetMarket);
-        if (parsed.customTarget) setCustomTarget(parsed.customTarget);
-        if (parsed.videoType) setVideoType(parsed.videoType);
-        if (parsed.videoDuration) setVideoDuration(parsed.videoDuration);
-        if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
-      } catch (e) {
-        console.error("Failed to restore video script state", e);
+    let cancelled = false;
+    const applySaved = (parsed: any) => {
+      const actualResult = parsed.result || parsed.payload || parsed;
+      if (actualResult && (actualResult.scenes || actualResult.title)) {
+        setResult(actualResult);
       }
-    }
+      if (parsed.productName) setProductName(parsed.productName);
+      if (parsed.features) setFeatures(parsed.features);
+      if (parsed.price) setPrice(parsed.price);
+      if (parsed.painPoint) setPainPoint(parsed.painPoint);
+      if (parsed.customAngle) setCustomAngle(parsed.customAngle);
+      if (parsed.hookType) setHookType(parsed.hookType);
+      if (parsed.targetMarket) setTargetMarket(parsed.targetMarket);
+      if (parsed.customTarget) setCustomTarget(parsed.customTarget);
+      if (parsed.videoType) setVideoType(parsed.videoType);
+      if (parsed.videoDuration) setVideoDuration(parsed.videoDuration);
+      if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
+    };
+
+    (async () => {
+      try {
+        const prefs = await preferencesApi.get();
+        if (cancelled) return;
+        if (prefs?.lastScript) {
+          applySaved(prefs.lastScript);
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to restore video script state from API", e);
+      }
+      // Fallback to localStorage
+      const saved = localStorage.getItem('dzads_last_generated_script');
+      if (saved) {
+        try {
+          applySaved(JSON.parse(saved));
+        } catch (err) {
+          console.error("Failed to restore video script state", err);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
   
   // New States for Product Image Upload & Analysis
@@ -564,6 +583,8 @@ Style d'accroche / Hook de départ : ${hookType}
 
         // Save active cache
         localStorage.setItem('dzads_last_generated_script', JSON.stringify(historyPayload));
+        // Persist to the server API (fire-and-forget)
+        preferencesApi.update({ lastScript: historyPayload }).catch(() => {});
       } else {
         throw new Error("Failed to parse script");
       }

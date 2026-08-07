@@ -1,3 +1,5 @@
+import { historyApi } from '../services/api';
+
 export type HistoryType = 'script' | 'image' | 'landing_page';
 
 export interface HistoryItem {
@@ -53,10 +55,21 @@ export function addToHistory(
     metadata,
   };
 
-  // Keep only the 10 latest entries
+  // Keep only the 10 latest entries locally
   const updated = [newItem, ...history].slice(0, 10);
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
   
+  // Persist to backend database via API
+  historyApi.create({
+    type,
+    title: title || 'Sans Titre',
+    previewText,
+    payload,
+    metadata,
+  }).catch((err) => {
+    console.error('Failed to sync history item to API:', err);
+  });
+
   // Notify any listeners
   window.dispatchEvent(new CustomEvent('dzads_history_updated', { detail: updated }));
   return updated;
@@ -67,6 +80,12 @@ export function deleteHistoryItem(id: string): HistoryItem[] {
   const history = getHistory();
   const updated = history.filter(item => item.id !== id);
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+  
+  // Persist deletion to backend database via API
+  historyApi.delete(id).catch((err) => {
+    console.error('Failed to delete history item from API:', err);
+  });
+
   window.dispatchEvent(new CustomEvent('dzads_history_updated', { detail: updated }));
   return updated;
 }
@@ -74,5 +93,12 @@ export function deleteHistoryItem(id: string): HistoryItem[] {
 export function clearHistory(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(LOCAL_STORAGE_KEY);
+
+  // Persist clear to backend database via API
+  historyApi.clear().catch((err) => {
+    console.error('Failed to clear history from API:', err);
+  });
+
   window.dispatchEvent(new CustomEvent('dzads_history_updated', { detail: [] }));
 }
+

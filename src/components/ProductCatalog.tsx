@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -23,6 +23,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { catalogApi, CatalogProduct } from '../services/api';
 
 interface Product {
   id: string;
@@ -87,8 +88,63 @@ const AVAILABLE_COUNTRIES = [
   { code: 'BE', name: 'Belgique', flag: '🇧🇪' },
 ];
 
+// Map a server CatalogProduct to the local Product shape used by the UI.
+const apiToProduct = (p: any): Product => ({
+  id: p.id,
+  name: p.name,
+  category: p.category,
+  purchasePrice: Number(p.purchasePrice) || 0,
+  sellingPrice: Number(p.sellingPrice) || 0,
+  targetCPA: Number(p.targetCpa) || 0,
+  stock: p.stock ?? 0,
+  status: (p.status || 'active') as Product['status'],
+  image: p.imageUrl || '',
+  countries: p.countries || 'DZ',
+  description: p.description || '',
+  sales: p.sales || 0,
+  euroRate: Number(p.euroRate) || 220,
+  confRate: Number(p.confRate) || 0.8,
+  delivRate: Number(p.delivRate) || 0.6,
+});
+
+// Map a local Product to the API CatalogProduct payload for create/update.
+const productToApiPayload = (product: Product): Partial<CatalogProduct> => ({
+  name: product.name,
+  category: product.category,
+  purchasePrice: product.purchasePrice,
+  sellingPrice: product.sellingPrice,
+  targetCpa: product.targetCPA,
+  stock: product.stock,
+  status: product.status,
+  imageUrl: product.image,
+  countries: product.countries,
+  description: product.description,
+  sales: product.sales,
+  euroRate: product.euroRate,
+  confRate: product.confRate,
+  delivRate: product.delivRate,
+});
+
 export default function ProductCatalog() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
+
+  // Load products from the server API on mount (fall back silently to seed data).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await catalogApi.list();
+        if (cancelled) return;
+        const list: any[] = Array.isArray(res) ? res : ((res as any)?.products ?? []);
+        if (Array.isArray(list) && list.length > 0) {
+          setProducts(list.map(apiToProduct));
+        }
+      } catch (e) {
+        console.error('Failed to load catalog from API', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tous');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Product | 'profit'; direction: 'asc' | 'desc' }>({
@@ -221,8 +277,12 @@ export default function ProductCatalog() {
       delivRate: metrics.deliv
     };
     setProducts([product, ...products]);
+    // Persist to the server API (fire-and-forget — never block the UI on network errors)
+    catalogApi.create(productToApiPayload(product)).catch((err) =>
+      console.error('Failed to save product to API', err)
+    );
     setIsModalOpen(false);
-    setNewProduct({ 
+    setNewProduct({
       name: '', 
       category: 'Electronique', 
       purchasePrice: '', 
@@ -238,11 +298,17 @@ export default function ProductCatalog() {
 
   const handleDeleteProduct = (id: string) => {
     setProducts(products.filter(p => p.id !== id));
+    // Persist the deletion to the server API (fire-and-forget)
+    catalogApi.delete(id).catch((err) =>
+      console.error('Failed to delete product from API', err)
+    );
   };
 
   const handleClearCatalog = () => {
     if (confirm('Voulez-vous vraiment vider tout le catalogue ?')) {
       setProducts([]);
+      // No bulk-delete endpoint — remove each product via the API.
+      products.forEach(p => catalogApi.delete(p.id).catch(() => {}));
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Clapperboard,
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Reorder } from 'framer-motion';
+import { preferencesApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -91,14 +92,39 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const [isReorderingMode, setIsReorderingMode] = useState(false);
   const [items, setItems] = useState<typeof defaultNavItems>(getStoredNavItems);
 
+  // Sync the tools order from the server API on mount (localStorage stays as fallback).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const prefs = await preferencesApi.get();
+        if (cancelled) return;
+        const ids = prefs?.toolsOrder;
+        if (Array.isArray(ids) && ids.length > 0) {
+          const ordered = ids
+            .map(id => defaultNavItems.find(item => item.id === id))
+            .filter(Boolean) as typeof defaultNavItems;
+          const missing = defaultNavItems.filter(item => !ids.includes(item.id));
+          setItems([...ordered, ...missing]);
+        }
+      } catch (e) {
+        console.error('Failed to load tools order from API', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const handleReorder = (newOrder: typeof defaultNavItems) => {
     setItems(newOrder);
-    localStorage.setItem('dzads_tools_order', JSON.stringify(newOrder.map(o => o.id)));
+    const order = newOrder.map(o => o.id);
+    localStorage.setItem('dzads_tools_order', JSON.stringify(order));
+    preferencesApi.update({ toolsOrder: order }).catch(() => {});
   };
 
   const resetOrder = () => {
     setItems(defaultNavItems);
     localStorage.removeItem('dzads_tools_order');
+    preferencesApi.update({ toolsOrder: defaultNavItems.map(o => o.id) }).catch(() => {});
   };
 
   return (

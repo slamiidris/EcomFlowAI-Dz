@@ -19,6 +19,7 @@ import { generateProductImage } from '../services/gemini';
 import { cn } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
 import { addToHistory } from '../lib/history';
+import { preferencesApi } from '../services/api';
 import PromptField from './PromptField';
 
 export default function ProductImageGen() {
@@ -30,20 +31,38 @@ export default function ProductImageGen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load last restored or generated image on mount
+  // Load last restored or generated image from the API on mount (localStorage as fallback)
   useEffect(() => {
-    const saved = localStorage.getItem('dzads_last_generated_image');
-    if (saved) {
+    let cancelled = false;
+    const applySaved = (parsed: any) => {
+      setResult(parsed.result || parsed.img || (typeof parsed === 'string' ? parsed : null));
+      if (parsed.productName) setProductName(parsed.productName);
+      if (parsed.style) setStyle(parsed.style);
+      if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
+    };
+
+    (async () => {
       try {
-        const parsed = JSON.parse(saved);
-        setResult(parsed.result || parsed.img || (typeof parsed === 'string' ? parsed : null));
-        if (parsed.productName) setProductName(parsed.productName);
-        if (parsed.style) setStyle(parsed.style);
-        if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
+        const prefs = await preferencesApi.get();
+        if (cancelled) return;
+        if (prefs?.lastImage) {
+          applySaved(prefs.lastImage);
+          return;
+        }
       } catch (e) {
-        console.error(e);
+        console.error('Failed to load last image from API', e);
       }
-    }
+      // Fallback to localStorage
+      const saved = localStorage.getItem('dzads_last_generated_image');
+      if (saved) {
+        try {
+          applySaved(JSON.parse(saved));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const styles = [
@@ -104,6 +123,8 @@ export default function ProductImageGen() {
         style,
         aspectRatio
       }));
+      // Persist to the server API (fire-and-forget)
+      preferencesApi.update({ lastImage: { result: img, productName, style, aspectRatio } }).catch(() => {});
     } catch (err: any) {
       console.error(err);
       toast.error("Échec de la génération de l'image.");

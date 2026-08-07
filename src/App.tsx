@@ -9,6 +9,7 @@ import Sidebar from './components/Sidebar';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
 import { cn } from './lib/utils';
+import { preferencesApi } from './services/api';
 import { Loader2, Sun, Moon, HelpCircle, X, Sparkles, BookOpen, Percent, Compass } from 'lucide-react';
 import { useAuth, PlanId } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
@@ -39,7 +40,7 @@ export default function App() {
   const [guideStep, setGuideStep] = useState(0);
   const mainRef = useRef<HTMLElement>(null);
 
-  const { user, loading } = useAuth();
+  const { user, loading, isMock } = useAuth();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
 
@@ -103,6 +104,8 @@ export default function App() {
     }
     // Dispatch event to keep other mounts updated
     window.dispatchEvent(new CustomEvent('dz_theme_changed', { detail: checked }));
+    // Dual-write: persist the theme to the server API (fire-and-forget)
+    preferencesApi.update({ theme: checked ? 'dark' : 'light' }).catch(() => {});
   };
 
   useEffect(() => {
@@ -209,6 +212,13 @@ export default function App() {
                 <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
                   {/* Language Switcher Component */}
                   <LanguageSwitcher />
+
+                  {/* Dev mode badge — visible when using the mock Google login */}
+                  {isMock && (
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[8px] font-mono font-bold uppercase tracking-widest select-none">
+                      DEV
+                    </span>
+                  )}
 
                   {/* Sleek Dynamic Slide-Toggle for Dark/Light Mode */}
                   <div className="flex items-center gap-0.5 sm:gap-2 bg-black/30 p-0.5 sm:p-1.5 rounded-lg sm:rounded-2xl border border-white/5 select-none shrink-0" id="global-theme-toggle">

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { preferencesApi } from '../services/api';
 
 export type Language = 'fr' | 'ar' | 'en';
 
@@ -331,6 +332,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       document.documentElement.dir = dir;
     }
   }, [language, dir]);
+
+  // Dual-write: persist the language to the server API (fire-and-forget).
+  useEffect(() => {
+    preferencesApi.update({ language }).catch(() => {});
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

@@ -2,8 +2,22 @@ import { TrendingUp, Users, ShoppingBag, Package, Settings2, CheckCircle2, Circl
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
-import { getHistory, deleteHistoryItem, clearHistory, HistoryItem } from '../lib/history';
+import { HistoryItem } from '../lib/history';
+import { historyApi, preferencesApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+// localStorage fallback for generation history (read only when the API is unreachable).
+const getLocalHistory = (): HistoryItem[] => {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem('dzads_generation_history');
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    console.error('Failed to parse generation history', e);
+    return [];
+  }
+};
 
 export default function DashboardHome() {
   const { user } = useAuth();
@@ -19,10 +33,9 @@ export default function DashboardHome() {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
 
-  // Load configuration, widget order and history from localStorage on mount
+  // Load configuration, widget order and history from the API on mount
+  // (localStorage remains the fallback so the app never breaks offline).
   useEffect(() => {
-    setHistoryItems(getHistory());
-
     const handleHistoryUpdate = (e: any) => {
       if (e.detail) {
         setHistoryItems(e.detail);
@@ -30,51 +43,96 @@ export default function DashboardHome() {
     };
     window.addEventListener('dzads_history_updated', handleHistoryUpdate);
 
-    const savedConfig = localStorage.getItem('dashboard_config');
-    if (savedConfig) {
-      try {
-        const parsed = JSON.parse(savedConfig);
-        setActiveWidgets(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error("Failed to parse dashboard config", e);
-      }
-    }
+    let cancelled = false;
 
-    const savedOrder = localStorage.getItem('dashboard_widget_order');
-    if (savedOrder) {
+    const loadHistory = async () => {
       try {
-        const parsed = JSON.parse(savedOrder);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        const res = await historyApi.list();
+        if (cancelled) return;
+        const list: any[] = Array.isArray(res) ? res : ((res as any)?.history ?? []);
+        if (Array.isArray(list)) {
+          setHistoryItems(list.map(item => ({
+            ...item,
+            timestamp: new Date(item.createdAt).getTime(),
+          })));
+        }
+      } catch (e) {
+        console.error('Failed to load history from API', e);
+        if (!cancelled) setHistoryItems(getLocalHistory());
+      }
+    };
+
+    const loadPreferences = async () => {
+      try {
+        const prefs = await preferencesApi.get();
+        if (cancelled) return;
+
+        if (prefs?.dashboardConfig && typeof prefs.dashboardConfig === 'object') {
+          setActiveWidgets(prev => ({ ...prev, ...prefs.dashboardConfig }));
+        }
+        if (Array.isArray(prefs?.dashboardWidgetOrder) && prefs.dashboardWidgetOrder.length > 0) {
           const validKeys = ['featured', 'stats', 'geo', 'prediction', 'history'];
-          const filtered = parsed.filter(k => validKeys.includes(k));
+          const filtered = prefs.dashboardWidgetOrder.filter((k: string) => validKeys.includes(k));
           const missing = validKeys.filter(k => !filtered.includes(k));
           setWidgetOrder([...filtered, ...missing]);
         }
       } catch (e) {
-        console.error("Failed to parse widget order", e);
+        console.error('Failed to load preferences from API', e);
+        if (cancelled) return;
+        // Fallback to localStorage
+        const savedConfig = localStorage.getItem('dashboard_config');
+        if (savedConfig) {
+          try {
+            const parsed = JSON.parse(savedConfig);
+            setActiveWidgets(prev => ({ ...prev, ...parsed }));
+          } catch (err) {
+            console.error("Failed to parse dashboard config", err);
+          }
+        }
+        const savedOrder = localStorage.getItem('dashboard_widget_order');
+        if (savedOrder) {
+          try {
+            const parsed = JSON.parse(savedOrder);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const validKeys = ['featured', 'stats', 'geo', 'prediction', 'history'];
+              const filtered = parsed.filter((k: string) => validKeys.includes(k));
+              const missing = validKeys.filter(k => !filtered.includes(k));
+              setWidgetOrder([...filtered, ...missing]);
+            }
+          } catch (err) {
+            console.error("Failed to parse widget order", err);
+          }
+        }
       }
-    }
+    };
+
+    loadHistory();
+    loadPreferences();
 
     return () => {
+      cancelled = true;
       window.removeEventListener('dzads_history_updated', handleHistoryUpdate);
     };
   }, []);
 
-  // Save configuration
+  // Save configuration (dual-write: localStorage for instant effect, API for persistence)
   const toggleWidget = (id: keyof typeof activeWidgets) => {
     const newConfig = { ...activeWidgets, [id]: !activeWidgets[id] };
     setActiveWidgets(newConfig);
     localStorage.setItem('dashboard_config', JSON.stringify(newConfig));
+    preferencesApi.update({ dashboardConfig: newConfig }).catch(() => {});
   };
 
   const handleReorder = (newOrder: string[]) => {
     setWidgetOrder(newOrder);
     localStorage.setItem('dashboard_widget_order', JSON.stringify(newOrder));
+    preferencesApi.update({ dashboardWidgetOrder: newOrder }).catch(() => {});
   };
 
   const resetOrder = () => {
     setWidgetOrder(['featured', 'stats', 'geo', 'prediction', 'history']);
     localStorage.removeItem('dashboard_widget_order');
+    preferencesApi.update({ dashboardWidgetOrder: ['featured', 'stats', 'geo', 'prediction', 'history'] }).catch(() => {});
   };
 
   const handleRestoreItem = (item: HistoryItem) => {
@@ -105,13 +163,16 @@ export default function DashboardHome() {
   };
 
   const handleDeleteItem = (id: string) => {
-    deleteHistoryItem(id);
-    // State will be updated reactively via the 'dzads_history_updated' event!
+    // Optimistic local update
+    setHistoryItems(prev => prev.filter(i => i.id !== id));
+    // Persist the deletion to the server API
+    historyApi.delete(id).catch(() => {});
   };
 
   const handleClearHistory = () => {
     if (window.confirm("Êtes-vous sûr de vouloir vider tout votre historique de génération ?")) {
-      clearHistory();
+      setHistoryItems([]);
+      historyApi.clear().catch(() => {});
     }
   };
 

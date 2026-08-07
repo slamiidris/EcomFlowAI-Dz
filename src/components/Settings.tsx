@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { 
-  Settings as SettingsIcon, 
-  Facebook, 
-  Key, 
-  Briefcase, 
-  Save, 
+import {
+  Settings as SettingsIcon,
+  Facebook,
+  Key,
+  Briefcase,
+  Save,
   CheckCircle2,
   AlertCircle,
-  Layout,
-  Sun,
-  Moon
+  Layout
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
+import { settingsApi } from '../services/api';
 
 interface IntegrationSettings {
   facebookAdsToken: string;
@@ -48,53 +47,41 @@ export default function Settings() {
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('theme') !== 'light';
-  });
-
-  const handleThemeToggle = (checked: boolean) => {
-    setIsDark(checked);
-    if (checked) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-    // Dispatch event to main window/frame elements
-    window.dispatchEvent(new CustomEvent('dz_theme_changed', { detail: checked }));
-  };
-
   useEffect(() => {
-    const handleThemeToggleCustom = (e: any) => {
-      if (e.detail !== undefined) {
-        setIsDark(e.detail);
-      }
+    let cancelled = false;
+    const applySettings = (parsed: any) => {
+      setSettings(prev => ({
+        ...prev,
+        ...parsed
+      }));
     };
-    window.addEventListener('dz_theme_changed', handleThemeToggleCustom);
-    return () => {
-      window.removeEventListener('dz_theme_changed', handleThemeToggleCustom);
-    };
-  }, []);
 
-  useEffect(() => {
-    const savedSettings = localStorage.getItem('dzads_settings');
-    if (savedSettings) {
+    (async () => {
       try {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(prev => ({
-          ...prev,
-          ...parsed
-        }));
+        const saved = await settingsApi.get();
+        if (cancelled || !saved) return;
+        applySettings(saved);
       } catch (e) {
-        console.error('Failed to parse settings');
+        console.error('Failed to load settings from API', e);
+        // Fallback to localStorage
+        const savedSettings = localStorage.getItem('dzads_settings');
+        if (savedSettings) {
+          try {
+            applySettings(JSON.parse(savedSettings));
+          } catch (err) {
+            console.error('Failed to parse settings');
+          }
+        }
       }
-    }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const handleSave = () => {
     try {
       localStorage.setItem('dzads_settings', JSON.stringify(settings));
+      // Persist to API (fire-and-forget — never block the UI on network errors)
+      settingsApi.update(settings).catch(() => {});
       setIsSaved(true);
       setError(null);
       toast.success('Paramètres enregistrés avec succès ! 💾');
@@ -149,46 +136,6 @@ export default function Settings() {
       </div>
 
       <div className="space-y-8">
-        {/* Affichage / Dark Mode */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-dz-emerald/10 text-dz-emerald">
-                {isDark ? <Moon size={20} /> : <Sun size={20} />}
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white font-sans uppercase tracking-tight">Thème de l'Espace</h2>
-                <p className="text-white/40 text-xs text-left">Basculez entre le mode sombre et le mode clair pour l'application</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3 select-none shrink-0 self-end sm:self-auto">
-              <span className={cn("text-xs font-black font-mono transition-colors", !isDark ? "text-dz-amber" : "text-white/30")}>CLAIR</span>
-              <button
-                id="theme-toggle-switch"
-                type="button"
-                onClick={() => handleThemeToggle(!isDark)}
-                className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-dz-emerald/40",
-                  isDark ? "bg-dz-emerald" : "bg-white/10"
-                )}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
-                    isDark ? "translate-x-5" : "translate-x-0"
-                  )}
-                />
-              </button>
-              <span className={cn("text-xs font-black font-mono transition-colors", isDark ? "text-dz-emerald animate-pulse" : "text-white/30")}>SOMBRE (DARK MODE)</span>
-            </div>
-          </div>
-        </motion.div>
-
         {/* Workspace Info */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}

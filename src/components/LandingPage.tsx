@@ -120,8 +120,12 @@ export default function LandingPage() {
             {[0, 1].map((dup) => (
               <div key={dup} className="flex shrink-0 items-center" aria-hidden={dup === 1}>
                 {TICKER_ITEMS.map((item, i) => (
-                  <span key={`${dup}-${i}`} className="flex items-center gap-3 px-5 whitespace-nowrap font-mono text-[12px] text-white/45">
-                    <span className="text-dz-emerald/60">◈</span>
+                  <span
+                    key={`${dup}-${i}`}
+                    className="dz-ticker-item flex items-center gap-3 px-5 whitespace-nowrap font-mono text-[12px] text-white/45"
+                    style={{ animationDelay: `${(i * 0.5) % 4}s` }}
+                  >
+                    <span className="dz-ticker-diamond text-dz-emerald">◈</span>
                     {item}
                   </span>
                 ))}
@@ -214,8 +218,8 @@ export default function LandingPage() {
                   className={cn(
                     'w-full rounded-xl px-4 py-3 text-sm font-bold transition-all active:scale-[0.98] cursor-pointer',
                     p.popular
-                      ? 'bg-linear-to-r from-dz-emerald to-dz-gold text-black hover:opacity-90'
-                      : 'bg-white/5 border border-white/15 hover:bg-white/10 hover:border-dz-emerald/40'
+                      ? 'bg-linear-to-r from-dz-emerald to-dz-gold text-black hover:shadow-[0_4px_25px_rgba(242,254,0,0.25)] shadow-lg'
+                      : 'bg-linear-to-r from-white/5 to-white/[0.02] border border-white/15 hover:bg-white/10 hover:border-dz-emerald/40 hover:shadow-[0_4px_20px_rgba(0,242,254,0.12)]'
                   )}
                 >
                   S'abonner

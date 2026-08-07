@@ -522,10 +522,32 @@ html:not(.dark) #global-theme-toggle span {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
+@keyframes dz-diamond-pulse {
+  0%, 100% { opacity: 0.4; text-shadow: 0 0 0 transparent; }
+  50%      { opacity: 1;   text-shadow: 0 0 8px var(--color-dz-emerald); }
+}
+@keyframes dz-item-glow {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.9; }
+}
+@keyframes dz-ticker-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
 .dz-ticker {
   -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
           mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
   overflow: hidden;
+  position: relative;
+}
+.dz-ticker::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(0,242,254,0.06) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: dz-ticker-shimmer 6s ease-in-out infinite;
+  pointer-events: none;
 }
 .dz-ticker-track {
   display: flex;
@@ -535,6 +557,19 @@ html:not(.dark) #global-theme-toggle span {
 .dz-ticker:hover .dz-ticker-track {
   animation-play-state: paused;
 }
+.dz-ticker-item {
+  animation: dz-item-glow 4s ease-in-out infinite;
+  transition: text-shadow 0.3s ease;
+}
+.dz-ticker-item:hover {
+  text-shadow: 0 0 12px rgba(0,242,254,0.4);
+}
+.dz-ticker-diamond {
+  animation: dz-diamond-pulse 2.5s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .dz-ticker-track { animation: none; }
+  .dz-ticker-track { animation-duration: 90s; }
+  .dz-ticker-item  { animation-duration: 8s; }
+  .dz-ticker-diamond { animation-duration: 5s; }
+  .dz-ticker::after  { animation: none; }
 }
