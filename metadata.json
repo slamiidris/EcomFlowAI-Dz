@@ -1,0 +1,6 @@
+{
+  "name": "DzAds AI",
+  "description": "Plateforme d'IA pour l'e-commerce en Algérie : générez des scripts publicitaires vidéo COD et des structures de landing pages optimisées.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
