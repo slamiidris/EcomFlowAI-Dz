@@ -1,164 +1,117 @@
-// DzAds AI — Database schema (Neon PostgreSQL)
-// Run: npx prisma migrate dev --name init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
-// ---------------------------------------------------------------------------
-// Users — auth profile + subscription plan (replaces data/users.json)
-// ---------------------------------------------------------------------------
-model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  name            String
-  avatarUrl       String?   @map("avatar_url")
-
-  // Subscription plan (1:1)
-  plan            String?   // monthly | quarterly | lifetime
-  planStatus      String?   @map("plan_status")   // pending | active
-  planSelectedAt  DateTime? @map("plan_selected_at")
-  planActiveFrom  DateTime? @map("plan_active_from")
-  planExpiresAt   DateTime? @map("plan_expires_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt     @map("updated_at")
-
-  // Relations
-  apiSettings        ApiSettings?
-  preferences        UserPreferences?
-  generationHistory  GenerationHistory[]
-  products           ProductCatalog[]
-  lpSessions         LpSession[]
-  chatSessions       ChatSession[]
-
-  @@map("users")
+model api_settings {
+  id                         String   @id
+  user_id                    String   @unique
+  facebook_ads_token         String?
+  facebook_account_id        String?
+  tiktok_ads_token           String?
+  tiktok_account_id          String?
+  google_ads_customer_id     String?
+  google_ads_developer_token String?
+  snap_ads_token             String?
+  snap_account_id            String?
+  gemini_api_key             String?
+  workspace_name             String   @default("E-com DZ Workspace")
+  custom_api_token           String?
+  updated_at                 DateTime
+  users                      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
-// ---------------------------------------------------------------------------
-// API Settings — ad-platform tokens (replaces dzads_settings localStorage)
-// ---------------------------------------------------------------------------
-model ApiSettings {
-  id                   String  @id @default(uuid())
-  userId               String  @unique @map("user_id")
-  facebookAdsToken     String? @map("facebook_ads_token")
-  facebookAccountId    String? @map("facebook_account_id")
-  tiktokAdsToken       String? @map("tiktok_ads_token")
-  tiktokAccountId      String? @map("tiktok_account_id")
-  googleAdsCustomerId  String? @map("google_ads_customer_id")
-  googleAdsDeveloperToken String? @map("google_ads_developer_token")
-  snapAdsToken         String? @map("snap_ads_token")
-  snapAccountId        String? @map("snap_account_id")
-  geminiApiKey         String? @map("gemini_api_key")
-  workspaceName        String  @default("E-com DZ Workspace") @map("workspace_name")
-  customApiToken       String? @map("custom_api_token")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("api_settings")
+model chat_sessions {
+  id         String   @id
+  user_id    String
+  title      String?
+  messages   Json     @default("[]")
+  updated_at DateTime
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
-// ---------------------------------------------------------------------------
-// User Preferences — UI state (replaces 10 localStorage keys)
-// ---------------------------------------------------------------------------
-model UserPreferences {
-  id                   String   @id @default(uuid())
-  userId               String   @unique @map("user_id")
-  toolsOrder           String[] @default([]) @map("tools_order")
-  dashboardConfig      Json     @default("{}") @map("dashboard_config")
-  dashboardWidgetOrder String[] @default(["featured", "stats", "geo", "prediction", "history"]) @map("dashboard_widget_order")
-  language             String   @default("fr")
-  theme                String   @default("dark")
-  lastImage            Json?    @map("last_image")
-  lastScript           Json?    @map("last_script")
-  lastLpActiveId       String?  @map("last_lp_active_id")
-  lastChatActiveId     String?  @map("last_chat_active_id")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+model generation_history {
+  id           String   @id
+  user_id      String
+  type         String
+  title        String
+  preview_text String?
+  payload      Json
+  metadata     Json?
+  created_at   DateTime @default(now())
+  users        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_preferences")
+  @@index([user_id, created_at(sort: Desc)])
 }
 
-// ---------------------------------------------------------------------------
-// Generation History — AI output log (replaces dzads_generation_history)
-// ---------------------------------------------------------------------------
-model GenerationHistory {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  type        String   // script | image | landing_page
-  title       String
-  previewText String?  @map("preview_text")
-  payload     Json
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt(sort: Desc)])
-  @@map("generation_history")
+model lp_sessions {
+  id         String   @id
+  user_id    String
+  title      String?
+  state      Json
+  updated_at DateTime
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
-// ---------------------------------------------------------------------------
-// Product Catalog — CRUD (replaces ephemeral in-memory state)
-// ---------------------------------------------------------------------------
-model ProductCatalog {
-  id            String   @id @default(uuid())
-  userId        String   @map("user_id")
-  name          String
-  category      String
-  purchasePrice Decimal? @map("purchase_price") @db.Decimal(12, 2)
-  sellingPrice  Decimal? @map("selling_price") @db.Decimal(12, 2)
-  targetCpa     Decimal? @map("target_cpa") @db.Decimal(8, 2)
-  stock         Int      @default(0)
-  status        String?  // active | low_stock | out_of_stock
-  imageUrl      String?  @map("image_url")
-  countries     String   @default("DZ")
-  description   String?
-  sales         Int      @default(0)
-  euroRate      Decimal  @default(220) @map("euro_rate") @db.Decimal(8, 2)
-  confRate      Decimal  @default(0.80) @map("conf_rate") @db.Decimal(5, 4)
-  delivRate     Decimal  @default(0.60) @map("deliv_rate") @db.Decimal(5, 4)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt     @map("updated_at")
+model product_catalog {
+  id             String   @id
+  user_id        String
+  name           String
+  category       String
+  purchase_price Decimal? @db.Decimal(12, 2)
+  selling_price  Decimal? @db.Decimal(12, 2)
+  target_cpa     Decimal? @db.Decimal(8, 2)
+  stock          Int      @default(0)
+  status         String?
+  image_url      String?
+  countries      String   @default("DZ")
+  description    String?
+  sales          Int      @default(0)
+  euro_rate      Decimal  @default(220) @db.Decimal(8, 2)
+  conf_rate      Decimal  @default(0.80) @db.Decimal(5, 4)
+  deliv_rate     Decimal  @default(0.60) @db.Decimal(5, 4)
+  created_at     DateTime @default(now())
+  updated_at     DateTime
+  users          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("product_catalog")
+  @@index([user_id])
 }
 
-// ---------------------------------------------------------------------------
-// LP Sessions — landing page editor state (replaces dzads_lp_sessions)
-// ---------------------------------------------------------------------------
-model LpSession {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  title     String?
-  state     Json
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("lp_sessions")
+model user_preferences {
+  id                     String   @id
+  user_id                String   @unique
+  tools_order            String[] @default([])
+  dashboard_config       Json     @default("{}")
+  dashboard_widget_order String[] @default(["featured", "stats", "geo", "prediction", "history"])
+  language               String   @default("fr")
+  theme                  String   @default("dark")
+  last_image             Json?
+  last_script            Json?
+  last_lp_active_id      String?
+  last_chat_active_id    String?
+  updated_at             DateTime
+  users                  users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
-// ---------------------------------------------------------------------------
-// Chat Sessions — expert AI conversation (replaces ecommerce_expert_sessions)
-// ---------------------------------------------------------------------------
-model ChatSession {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  title     String?
-  messages  Json     @default("[]")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("chat_sessions")
+model users {
+  id                 String               @id
+  email              String               @unique
+  name               String
+  avatar_url         String?
+  plan               String?
+  plan_status        String?
+  plan_selected_at   DateTime?
+  plan_active_from   DateTime?
+  plan_expires_at    DateTime?
+  created_at         DateTime             @default(now())
+  updated_at         DateTime
+  api_settings       api_settings?
+  chat_sessions      chat_sessions[]
+  generation_history generation_history[]
+  lp_sessions        lp_sessions[]
+  product_catalog    product_catalog[]
+  user_preferences   user_preferences?
 }
