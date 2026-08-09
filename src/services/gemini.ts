@@ -1363,4 +1363,85 @@ export async function suggestNicheAngles(productName: string, brand: string = ""
   });
 }
 
+/**
+ * Analyzes landing page screenshots/designs and returns structured sections
+ * that can be rendered as a real landing page.
+ */
+export async function analyzeLandingPageImages(images: { data: string, mimeType: string }[]) {
+  return callGeminiWithRetry(async (ai) => {
+    const imageParts = images.map(img => ({ inlineData: img }));
 
+    const prompt = `
+      You are an expert web designer and landing page architect. Analyze the provided landing page screenshot(s)/design(s) and extract the COMPLETE structure as structured data.
+
+      For each distinct visual section you identify in the image(s), create a section object. Pay close attention to:
+      - Text content (headlines, subheadlines, body text, button labels)
+      - Layout structure (hero, feature grids, testimonials, CTAs, galleries)
+      - Color schemes (extract dominant colors as hex)
+      - Hierarchy and grouping of elements
+
+      Return a JSON object with this EXACT structure:
+      {
+        "pageName": "Suggested name for this landing page",
+        "sections": [
+          {
+            "type": "hero",
+            "headline": "Main headline text from the image",
+            "subheadline": "Supporting text / subtitle",
+            "ctaText": "Button text",
+            "bgColor": "#hex color"
+          },
+          {
+            "type": "features",
+            "title": "Section heading",
+            "subtitle": "Section subheading",
+            "items": [
+              { "title": "Feature name", "description": "Feature description", "icon": "emoji" }
+            ]
+          },
+          {
+            "type": "testimonial",
+            "quote": "Customer quote or review text",
+            "author": "Author name",
+            "role": "Author title/role"
+          },
+          {
+            "type": "cta",
+            "headline": "CTA headline",
+            "description": "CTA supporting text",
+            "buttonText": "Button label",
+            "bgColor": "#hex color"
+          }
+        ]
+      }
+
+      RULES:
+      - Extract ALL visible text faithfully — do not invent text that isn't in the images
+      - If text is in Arabic, keep it in Arabic. If in English, keep English. If in French, keep French.
+      - Use "hero" for the top section with main headline
+      - Use "features" for grids/cards showing product features or benefits
+      - Use "testimonial" for customer reviews, ratings, social proof
+      - Use "cta" for call-to-action sections (sign up, buy now, etc.)
+      - Extract the actual hex colors used in the design
+      - If you see an image gallery section, use "imageGallery" with an empty images array
+      - Generate 3-8 sections depending on what's visible
+      - Do NOT add fake statistics, fake names, or invented content
+
+      ONLY return valid JSON. No markdown, no explanation.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [
+        { text: prompt },
+        ...imageParts
+      ],
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 8192
+      }
+    });
+
+    return safeParseJSON(response.text || "{}");
+  });
+}

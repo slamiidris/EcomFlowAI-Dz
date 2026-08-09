@@ -16,6 +16,52 @@ async function api<T = any>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
+// Email / password auth (name + email + password + 6-digit OTP)
+// ---------------------------------------------------------------------------
+export interface OtpChallenge {
+  ok: boolean;
+  email: string;
+  mode: "verification" | "login";
+  dev?: boolean;
+  expiresInSec: number;
+}
+
+export const authApi = {
+  register: (name: string, email: string, password: string) =>
+    api<OtpChallenge>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    }),
+  login: (email: string, password: string) =>
+    api<OtpChallenge>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  verifyOtp: (email: string, code: string) =>
+    api<{ user: any }>("/api/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    }),
+  resendOtp: (email: string, reason?: string) =>
+    api<{ ok: boolean; email: string; expiresInSec: number }>("/api/auth/resend-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, ...(reason ? { reason } : {}) }),
+    }),
+  forgotPassword: (email: string) =>
+    api<{ ok: boolean; email: string; dev?: boolean; expiresInSec: number }>("/api/auth/forgot-password", {
+      method: "POST", body: JSON.stringify({ email }),
+    }),
+  verifyResetOtp: (email: string, code: string) =>
+    api<{ ok: boolean; email: string; resetToken: string; expiresInSec: number }>("/api/auth/verify-reset-otp", {
+      method: "POST", body: JSON.stringify({ email, code }),
+    }),
+  resetPassword: (email: string, resetToken: string, password: string) =>
+    api<{ ok: boolean }>("/api/auth/reset-password", {
+      method: "POST", body: JSON.stringify({ email, resetToken, password }),
+    }),
+};
+
+// ---------------------------------------------------------------------------
 // Settings (ad-platform tokens)
 // ---------------------------------------------------------------------------
 export const settingsApi = {
@@ -91,6 +137,45 @@ export const catalogApi = {
     api(`/api/catalog/${id}`, { method: "DELETE" }),
   stats: () =>
     api<{ count: number; stockAlertCount: number }>("/api/catalog/stats"),
+};
+
+// ---------------------------------------------------------------------------
+// Dashboard analytics (aggregated KPIs from product catalog)
+// ---------------------------------------------------------------------------
+export interface DashboardSummary {
+  totalProducts: number;
+  activeProducts: number;
+  totalSales: number;
+  stockAlertCount: number;
+  estimatedRevenue: number;
+  estimatedDeliveredRevenue: number;
+  avgConfRate: number;
+  avgDelivRate: number;
+  topProducts: Array<{
+    id: string;
+    name: string;
+    category: string;
+    sales: number;
+    sellingPrice: number;
+    stock: number;
+    estimatedRevenue: number;
+  }>;
+  salesByCategory: Array<{
+    category: string;
+    count: number;
+    sales: number;
+    revenue: number;
+  }>;
+  lowStockProducts: Array<{
+    id: string;
+    name: string;
+    stock: number;
+    category: string;
+  }>;
+}
+
+export const dashboardApi = {
+  summary: () => api<DashboardSummary>("/api/dashboard/summary"),
 };
 
 // ---------------------------------------------------------------------------

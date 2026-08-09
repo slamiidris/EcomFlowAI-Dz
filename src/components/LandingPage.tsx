@@ -1,131 +1,374 @@
+import { Fragment } from 'react';
 import { motion } from 'framer-motion';
-import { Clapperboard, LayoutTemplate, Camera, MessageSquareText, Radar, Calculator, Zap, Lock, ArrowRight } from 'lucide-react';
-import { useAuth, PlanId } from '../context/AuthContext';
+import { Zap, ArrowRight, ArrowLeft, Lock, LayoutTemplate, Clapperboard, Palette, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PlanId } from '../context/AuthContext';
 import { PLANS } from './PlanCheckout';
+import { useLanguage, Language } from '../context/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
 import { cn } from '../lib/utils';
+import ecomflowLogo from '../images/EcomFlow.png';
 
-function GoogleG({ size = 18 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-    </svg>
-  );
-}
+// Market-pulse ticker content — capability phrases, no made-up stats or products.
+const TICKERS: Record<Language, string[]> = {
+  en: [
+    'AI Landing Pages — Built to convert',
+    'Ad Creatives — Ready to launch',
+    'Marketing Videos — From your product',
+    'Product Analysis — Angles & audience',
+    'Campaign Copy — Hooks that sell',
+    'Launch-Ready Assets — In minutes',
+  ],
+  ar: [
+    'صفحات هبوط بالذكاء الاصطناعي — مصممة للتحويل',
+    'تصاميم إعلانية — جاهزة للإطلاق',
+    'فيديوهات تسويقية — من منتجك',
+    'تحليل المنتج — الزوايا والجمهور',
+    'نصوص إعلانية — تجذب الزبون',
+    'محتوى جاهز للإطلاق — في دقائق',
+  ],
+  fr: [
+    'Landing Pages IA — Conçues pour convertir',
+    'Créations publicitaires — Prêtes à lancer',
+    'Vidéos marketing — À partir de ton produit',
+    'Analyse produit — Angles & audience',
+    'Textes publicitaires — Des hooks qui vendent',
+    'Contenus prêts — En quelques minutes',
+  ],
+};
 
-const TICKER_ITEMS = [
-  '🔥 Hachoir Manuel 3 Lames — +340% sur Telegram',
-  '👗 Abaya Dubai Luxe — Top vente Hamiz',
-  '⌚ Smart Watch Ultra 2 — Livraison 58 wilayas',
-  '☕ Machine à Café Expresso — Marge 62%',
-  '💡 Pack Éclairage Solaire — Saison en hausse',
-  '👟 Sneakers Jordan DZ — Volumes COD actifs',
-  '🚿 Aspirateur de Voiture — CPA bas',
-  '🧅 Mixeur Plongeant DZ — Retours < 2%',
-];
+// Product → campaign pipeline shown inside the dashboard mockup.
+const PIPELINE: Record<Language, string[]> = {
+  en: ['Upload', 'Analyze', 'Landing', 'Creatives', 'Video', 'Launch'],
+  ar: ['ارفع', 'حلّل', 'هبوط', 'إعلانات', 'فيديو', 'أطلق'],
+  fr: ['Importer', 'Analyser', 'Landing', 'Créas', 'Vidéo', 'Lancer'],
+};
+
+const ACTIVITY: Record<Language, { type: string; title: string; time: string }[]> = {
+  en: [
+    { type: '⚡', title: 'Landing Page · Skincare Serum', time: '2h ago' },
+    { type: '🎨', title: 'Ad Creative · Coffee Maker', time: 'yesterday' },
+    { type: '🎬', title: 'Marketing Video · Sneakers', time: '3d ago' },
+  ],
+  ar: [
+    { type: '⚡', title: 'صفحة هبوط · سيروم العناية', time: 'قبل ساعتين' },
+    { type: '🎨', title: 'إعلان · آلة القهوة', time: 'أمس' },
+    { type: '🎬', title: 'فيديو تسويقي · حذاء رياضي', time: 'قبل 3 أيام' },
+  ],
+  fr: [
+    { type: '⚡', title: 'Landing Page · Sérum Visage', time: 'il y a 2h' },
+    { type: '🎨', title: 'Créatif · Machine à Café', time: 'hier' },
+    { type: '🎬', title: 'Vidéo Marketing · Sneakers', time: 'il y a 3j' },
+  ],
+};
 
 const FEATURES = [
-  { icon: Radar, title: 'Scout Telegram', desc: 'Produits en train de monter détectés en direct sur les canaux DZ.', color: 'text-dz-emerald' },
-  { icon: Clapperboard, title: 'Pubs Vidéo & TikTok', desc: 'Scripts, storyboards et hooks IA prêts à shooter pour ta niche.', color: 'text-dz-amber' },
-  { icon: LayoutTemplate, title: 'Tunnels de Vente', desc: 'Landing pages COD optimisées conversion, visuels générés inclus.', color: 'text-dz-gold' },
-  { icon: Camera, title: 'Studio Photo IA', desc: 'Visuels HD professionnels pour tes produits, sans studio.', color: 'text-dz-dinar' },
-  { icon: MessageSquareText, title: 'Annonces Darja', desc: 'Hooks et copies qui parlent vraiment au marché algérien.', color: 'text-dz-emerald' },
-  { icon: Calculator, title: 'Marge COD', desc: 'Profit, ROAS et CPA cible calculés en secondes, en DZD.', color: 'text-dz-amber' },
+  { icon: LayoutTemplate, color: 'text-dz-gold', titleKey: 'lpFeat1Title', descKey: 'lpFeat1Desc' },
+  { icon: Palette, color: 'text-dz-amber', titleKey: 'lpFeat2Title', descKey: 'lpFeat2Desc' },
+  { icon: Clapperboard, color: 'text-dz-emerald', titleKey: 'lpFeat3Title', descKey: 'lpFeat3Desc' },
+  { icon: Sparkles, color: 'text-dz-dinar', titleKey: 'lpFeat4Title', descKey: 'lpFeat4Desc' },
+];
+
+const STEPS = [
+  { titleKey: 'lpStep1Title', descKey: 'lpStep1Desc' },
+  { titleKey: 'lpStep2Title', descKey: 'lpStep2Desc' },
+  { titleKey: 'lpStep3Title', descKey: 'lpStep3Desc' },
+  { titleKey: 'lpStep4Title', descKey: 'lpStep4Desc' },
+  { titleKey: 'lpStep5Title', descKey: 'lpStep5Desc' },
 ];
 
 const PLAN_EMOJI: Record<PlanId, string> = { monthly: '⚡', quarterly: '🔥', lifetime: '👑' };
 
 export default function LandingPage() {
-  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { t, language, isRTL } = useLanguage();
+
+  // Arabic typography: swap display/mono fonts for the Arabic typeface, drop latin tracking.
+  const display = language === 'ar' ? 'font-arabic' : 'font-display';
+  const label = language === 'ar' ? 'font-arabic tracking-normal' : 'font-mono';
+  const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
 
   const handleSubscribe = (plan: PlanId) => {
-    // Remember intent across the Google redirect; App opens the checkout after login.
+    // Remember the plan across the auth flow; the app opens the checkout after login.
     sessionStorage.setItem('dz_plan_intent', plan);
-    login();
+    navigate('/register');
   };
 
+  const scrollToId = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const tickerItems = TICKERS[language];
+  const pipelineSteps = PIPELINE[language];
+  const activityItems = ACTIVITY[language];
+
   return (
-    <div className="min-h-screen bg-[#030712] text-white overflow-x-hidden">
-      {/* NAV */}
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#030712]/70 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-linear-to-br from-dz-emerald to-dz-gold flex items-center justify-center text-base">🛍️</div>
-            <div className="leading-none">
-              <p className="font-display font-bold text-sm tracking-tight">DZ-Commerce <span className="text-dz-emerald">OS</span></p>
-              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/35">E-Com AI Platform</p>
-            </div>
+    <div className={cn('min-h-screen bg-dz-green text-white overflow-x-hidden', language === 'ar' && 'font-arabic')}>
+      {/* NAV — Linear/Vercel-inspired clean navbar */}
+      <header className="sticky top-0 z-40 border-b border-white/[0.04] bg-dz-green/70 backdrop-blur-2xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <a href="/" className="flex items-center gap-2.5 group">
+            <img src={ecomflowLogo} alt="EcomFlow AI" className="w-9 h-9 rounded-full object-cover shadow-[0_0_12px_rgba(212,164,76,0.1)] group-hover:shadow-[0_0_20px_rgba(212,164,76,0.2)] transition-all duration-300" />
+            <span className="font-display font-bold text-[15px] tracking-[-0.01em]">
+              <span className="text-white">EcomFlow </span><span className="brand-shimmer">AI</span>
+            </span>
+          </a>
+
+          {/* Center nav — desktop only */}
+          <nav className="hidden md:flex items-center gap-1">
+            {[
+              { label: t('lpNavFeatures'), href: '#features' },
+              { label: t('lpNavHow'), href: '#how-it-works' },
+              { label: t('lpNavPricing'), href: '#pricing' },
+            ].map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="px-3 py-1.5 text-[13px] text-white/40 hover:text-white rounded-lg hover:bg-white/[0.04] transition-all"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-1">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="px-3 py-2 text-[13px] font-medium text-white/40 hover:text-white rounded-lg hover:bg-white/[0.04] transition-all cursor-pointer"
+            >
+              {t('lpNavLogin')}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="ml-1 px-4 py-2 text-[13px] font-semibold bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] hover:border-white/[0.15] rounded-lg text-white transition-all cursor-pointer"
+            >
+              {t('lpNavGetStarted')}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={login}
-            className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 hover:border-dz-emerald/50 hover:bg-white/10 px-4 py-2 text-sm font-semibold transition-all active:scale-95 cursor-pointer"
-          >
-            <GoogleG size={16} />
-            Se connecter
-          </button>
         </div>
       </header>
 
       {/* HERO */}
-      <section className="relative">
+      <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)]" />
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-dz-emerald/10 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute top-40 left-10 w-72 h-72 bg-dz-gold/10 blur-[100px] rounded-full pointer-events-none" />
-        <div className="absolute top-64 right-10 w-72 h-72 bg-dz-amber/10 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-dz-emerald/[0.06] blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-40 left-10 w-72 h-72 bg-dz-gold/[0.05] blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute top-64 right-10 w-72 h-72 bg-dz-amber/[0.04] blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-16 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32 text-center">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-dz-emerald/30 bg-dz-emerald/5 px-3.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] text-dz-emerald">
-              <Zap size={11} /> Arsenal IA pour vendeurs algériens
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] border border-white/[0.08] px-3.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] text-white/50">
+              <Zap size={11} /> {t('lpBadge')}
             </span>
 
-            <h1 className="mt-6 font-display text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
-              Détecte le produit gagnant.
+            <h1 className={cn(
+              'mt-8 text-5xl sm:text-7xl font-bold leading-[1.05]',
+              language === 'ar' ? 'font-arabic' : 'font-display tracking-[-0.04em]'
+            )}>
+              {t('lpHeadline')}
               <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-dz-emerald via-dz-gold to-dz-dinar">
-                Domine le COD en Algérie.
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-dz-gold via-dz-emerald to-dz-dinar">
+                {t('lpHeadlineHighlight')}
               </span>
             </h1>
 
-            <p className="mt-6 max-w-2xl mx-auto text-white/55 text-base sm:text-lg leading-relaxed">
-              DzAds AI scanne Telegram, génère tes pubs vidéo, landing pages et visuels — et calcule ta marge.
-              Tout pensé pour le marché algérien, en Darija.
+            <p className="text-white/45 max-w-2xl mx-auto text-base sm:text-lg mt-6 leading-relaxed">
+              {t('lpDesc').split('EcomFlow AI').map((part, i, arr) => (
+                i < arr.length - 1
+                  ? <Fragment key={i}>{part}<span className="font-semibold brand-shimmer">EcomFlow AI</span></Fragment>
+                  : <Fragment key={i}>{part}</Fragment>
+              ))}
             </p>
 
-            <div className="mt-9 flex flex-col items-center gap-3">
+            <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <button
                 type="button"
-                onClick={login}
-                className="group flex items-center gap-3 rounded-2xl bg-white text-[#0f172a] px-7 py-3.5 text-[15px] font-bold shadow-[0_8px_40px_rgba(0,242,254,0.25)] hover:shadow-[0_8px_50px_rgba(139,92,246,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                onClick={() => navigate('/register')}
+                className="btn-dz-primary group w-full sm:w-auto"
               >
-                <GoogleG size={20} />
-                Continuer avec Google
-                <ArrowRight size={16} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                {t('lpCtaPrimary')}
+                <ArrowIcon size={16} className={cn('opacity-60 transition-transform group-hover:translate-x-0.5', isRTL && 'group-hover:-translate-x-0.5')} />
               </button>
-              <p className="flex items-center gap-1.5 text-[11px] text-white/35 font-mono">
-                <Lock size={11} /> Connexion sécurisée · sans mot de passe · 3 plans en DZD
-              </p>
+              <button
+                type="button"
+                onClick={() => scrollToId('how-it-works')}
+                className="text-[13px] text-white/40 hover:text-white transition-colors cursor-pointer"
+              >
+                {t('lpCtaSecondary')}
+              </button>
+            </div>
+
+            <p className={cn('flex items-center justify-center gap-1.5 text-[11px] text-white/25 mt-4', label)}>
+              {t('lpTrust')}
+            </p>
+
+            {/* Brand identity callout */}
+            <div className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full bg-dz-emerald/[0.06] border border-dz-emerald/[0.12] backdrop-blur-sm">
+              <Sparkles size={13} className="text-dz-gold" />
+              <span className="text-[11px] text-white/40">Powered by</span>
+              <span className="text-[13px] font-bold brand-shimmer">EcomFlow AI</span>
             </div>
           </motion.div>
+
+          {/* HERO MOCKUP — Premium dashboard preview */}
+          <div className="relative isolate mt-16 mx-auto max-w-5xl text-left">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-dz-card shadow-[0_25px_100px_rgba(0,0,0,0.6)] overflow-hidden">
+              {/* Browser chrome */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+                </div>
+                <div className="flex-1 flex justify-center">
+                  <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                    <Lock size={9} className="text-white/25" />
+                    <span className="text-[10px] font-mono text-white/30">{t('lpMockUrl')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dashboard body */}
+              <div className="flex min-h-[320px] sm:min-h-[380px]">
+                {/* Sidebar */}
+                <div className="hidden sm:flex flex-col w-14 border-r border-white/[0.06] bg-white/[0.015] py-3 items-center gap-1.5">
+                  {[
+                    { active: true, icon: '📊' },
+                    { active: false, icon: '📦' },
+                    { active: false, icon: '🤖' },
+                    { active: false, icon: '⚡' },
+                    { active: false, icon: '🎨' },
+                    { active: false, icon: '🎬' },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all',
+                        item.active
+                          ? 'bg-dz-emerald/15 border border-dz-emerald/25'
+                          : 'hover:bg-white/[0.04]'
+                      )}
+                    >
+                      {item.icon}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Main content */}
+                <div className="flex-1 p-4 sm:p-6">
+                  {/* KPI Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    {[
+                      { labelKey: 'lpKpiProducts', value: '8', delta: '+2', icon: '📦' },
+                      { labelKey: 'lpKpiAnalysis', value: '12', delta: '+4', icon: '🤖' },
+                      { labelKey: 'lpKpiLanding', value: '6', delta: '+1', icon: '⚡' },
+                      { labelKey: 'lpKpiCampaigns', value: '3', delta: '+1', icon: '🚀' },
+                    ].map((kpi) => (
+                      <div key={kpi.labelKey} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="text-xs">{kpi.icon}</span>
+                          <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t(kpi.labelKey)}</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-display text-lg sm:text-xl font-bold text-white">{kpi.value}</span>
+                          <span className="text-[9px] font-bold text-emerald-400">{kpi.delta}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pipeline visualization */}
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpPipelineLabel')}</span>
+                      <div className="flex-1 h-px bg-white/[0.04]" />
+                    </div>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      {pipelineSteps.map((step, i) => (
+                        <div key={step} className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className={cn(
+                            'w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold',
+                            i <= 2
+                              ? 'bg-dz-emerald/20 text-dz-emerald border border-dz-emerald/30'
+                              : 'bg-white/[0.04] text-white/30 border border-white/[0.06]'
+                          )}>
+                            {i + 1}
+                          </div>
+                          <span className={cn(
+                            'text-[10px] truncate hidden sm:inline',
+                            i <= 2 ? 'text-white/70' : 'text-white/25'
+                          )}>
+                            {step}
+                          </span>
+                          {i < 5 && <div className={cn('w-4 h-px shrink-0', i < 2 ? 'bg-dz-emerald/30' : 'bg-white/[0.06]')} />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mini chart + activity */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Chart area */}
+                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                      <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpChartLabel')}</span>
+                      <div className="flex items-end gap-1.5 mt-2 h-12">
+                        {[35, 50, 42, 65, 55, 78, 70, 85, 60, 92, 75, 88].map((h, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              'flex-1 rounded-sm transition-all',
+                              i >= 10 ? 'bg-dz-emerald/40' : 'bg-dz-emerald/15'
+                            )}
+                            style={{ height: `${h}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent activity */}
+                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                      <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpActivityLabel')}</span>
+                      <div className="space-y-2 mt-2">
+                        {activityItems.map((item, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-[10px]">{item.type}</span>
+                            <span className="text-[10px] text-white/50 truncate flex-1">{item.title}</span>
+                            <span className={cn('text-[8px] text-white/20', label)}>{item.time}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Glow behind mockup */}
+            <div className="absolute inset-0 -z-10 mx-auto max-w-5xl h-full">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-dz-emerald/[0.03] blur-[100px] rounded-full" />
+              <div className="absolute top-1/3 right-0 w-1/2 h-1/2 bg-dz-gold/[0.02] blur-[80px] rounded-full" />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* MARKET-PULSE TICKER (signature) */}
-      <section className="border-y border-white/5 bg-white/[0.015] py-3">
+      {/* CAPABILITIES TICKER (signature) */}
+      <section className="border-y border-white/[0.06] bg-white/[0.015] py-3">
         <div className="dz-ticker">
           <div className="dz-ticker-track">
             {[0, 1].map((dup) => (
               <div key={dup} className="flex shrink-0 items-center" aria-hidden={dup === 1}>
-                {TICKER_ITEMS.map((item, i) => (
+                {tickerItems.map((item, i) => (
                   <span
                     key={`${dup}-${i}`}
-                    className="dz-ticker-item flex items-center gap-3 px-5 whitespace-nowrap font-mono text-[12px] text-white/45"
-                    style={{ animationDelay: `${(i * 0.5) % 4}s` }}
+                    className={cn('flex items-center gap-3 px-5 whitespace-nowrap text-[12px] text-white/30', label)}
                   >
-                    <span className="dz-ticker-diamond text-dz-emerald">◈</span>
+                    <span className="text-dz-emerald">◈</span>
                     {item}
                   </span>
                 ))}
@@ -135,113 +378,165 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FEATURES */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
-        <div className="text-center mb-12">
-          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-dz-emerald/70 mb-3">12 outils · 1 commandement</p>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
-            Tout ce qu'il faut pour vendre, <span className="text-dz-emerald">réuni</span>
-          </h2>
+      {/* VALUE STRIP */}
+      <section className="py-8 border-b border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-center gap-4 text-[13px] text-white/35">
+          <span className="text-dz-emerald">◈</span>
+          {t('lpStrip')}
+          <span className="text-dz-emerald">◈</span>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      </section>
+
+      {/* FEATURES */}
+      <section id="features" className="py-24 sm:py-32 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-14">
+          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>{t('lpFeatLabel')}</p>
+          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
+            {t('lpFeatTitleA')}<span className="text-dz-emerald">{t('lpFeatTitleB')}</span>
+          </h2>
+          <p className="mt-3 text-white/45 text-sm max-w-xl mx-auto leading-relaxed">{t('lpFeatDesc')}</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f, i) => (
             <motion.div
-              key={f.title}
+              key={f.titleKey}
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: (i % 3) * 0.08 }}
-              className="glass-card glass-card-hover p-5"
+              transition={{ duration: 0.4, delay: (i % 4) * 0.08 }}
+              className="surface-card p-5 sm:p-6"
             >
-              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 mb-4', f.color)}>
+              <div className={cn('w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4', f.color)}>
                 <f.icon size={20} />
               </div>
-              <h3 className="font-display font-semibold text-[15px] mb-1">{f.title}</h3>
-              <p className="text-[13px] text-white/50 leading-relaxed">{f.desc}</p>
+              <h3 className={cn('font-semibold text-[15px] text-white mb-1', display)}>{t(f.titleKey)}</h3>
+              <p className="text-[13px] text-white/45 leading-relaxed">{t(f.descKey)}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section id="how-it-works" className="py-24 sm:py-32 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-14">
+          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>{t('lpHowLabel')}</p>
+          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>{t('lpHowTitle')}</h2>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {STEPS.map((s, i) => (
+            <motion.div
+              key={s.titleKey}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4, delay: (i % 5) * 0.08 }}
+              className="surface-card p-5 sm:p-6"
+            >
+              <div className="w-10 h-10 rounded-full bg-linear-to-br from-dz-gold to-dz-emerald text-black font-black flex items-center justify-center text-sm mb-4 shadow-[0_4px_16px_rgba(212,164,76,0.25)]">
+                {i + 1}
+              </div>
+              <h3 className={cn('font-semibold text-[15px] text-white mb-1', display)}>{t(s.titleKey)}</h3>
+              <p className="text-[13px] text-white/45 leading-relaxed">{t(s.descKey)}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* PRICING */}
-      <section className="relative py-20 sm:py-24">
-        <div className="absolute inset-0 bg-grid-white opacity-40 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,black,transparent)]" />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-dz-dinar/80 mb-3">Paiement en DZD · confirmation manuelle</p>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
-              Des plans simples, <span className="text-dz-dinar">en dinars</span>
-            </h2>
-            <p className="mt-3 text-white/50 text-sm">1 mois pour tester · 3 mois pour lancer · à vie pour dominer.</p>
-          </div>
+      <section id="pricing" className="py-24 sm:py-32 max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-14">
+          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-dinar/80 mb-3', label)}>{t('lpPriceLabel')}</p>
+          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
+            {t('lpPriceTitleA')}<span className="text-dz-dinar">{t('lpPriceTitleB')}</span>
+          </h2>
+          <p className="mt-3 text-white/45 text-sm">{t('lpPriceSub')}</p>
+        </div>
 
-          <div className="grid gap-5 md:grid-cols-3 items-stretch">
-            {PLANS.map((p) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.4 }}
-                className={cn(
-                  'relative rounded-3xl border p-6 flex flex-col bg-linear-to-b',
-                  p.accent,
-                  p.popular ? 'md:-mt-3 md:-mb-3 shadow-[0_20px_60px_rgba(139,92,246,0.25)]' : ''
-                )}
+        <div className="grid gap-5 md:grid-cols-3 items-stretch">
+          {PLANS.map((p) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4 }}
+              className={cn(
+                'surface-card relative p-6 flex flex-col',
+                p.popular && 'border-dz-emerald/60 ring-4 ring-dz-emerald/10 lg:-mt-4 lg:mb-4'
+              )}
+            >
+              {p.popular && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest bg-linear-to-r from-dz-gold to-dz-emerald text-black px-3 py-1 rounded-full whitespace-nowrap">
+                  ⭐ {t('lpPricePopular')}
+                </span>
+              )}
+
+              <p className={cn('text-[10px] uppercase tracking-widest text-white/40', label)}>{p.tagline}</p>
+              <h3 className={cn('text-xl font-bold mt-1.5 flex items-center gap-2', display)}>
+                <span>{PLAN_EMOJI[p.id]}</span> {p.label}
+              </h3>
+
+              <div className="mt-4 mb-1">
+                <span className="font-display font-bold text-3xl text-dz-dinar">{p.price}</span>
+                <span className="ml-2 text-sm text-white/45 font-mono">{p.note}</span>
+              </div>
+              <p className="text-[12px] text-white/45 mb-5">{p.per}</p>
+
+              <ul className="space-y-2 mb-7 text-[13px] text-white/45 flex-1">
+                {[t('lpPriceFeature1'), t('lpPriceFeature2'), t('lpPriceFeature3')].map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <span className="text-dz-emerald mt-0.5">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                type="button"
+                onClick={() => handleSubscribe(p.id)}
+                className={cn('w-full', p.popular ? 'btn-dz-primary' : 'btn-dz-secondary')}
               >
-                {p.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest bg-linear-to-r from-dz-gold to-dz-emerald text-black px-3 py-1 rounded-full">
-                    ⭐ Le plus choisi
-                  </span>
-                )}
-                <p className="text-[10px] font-mono uppercase tracking-widest text-white/40">{p.tagline}</p>
-                <h3 className="font-display text-xl font-bold mt-1.5 flex items-center gap-2">
-                  <span>{PLAN_EMOJI[p.id]}</span> {p.label}
-                </h3>
-                <div className="mt-4 mb-1">
-                  <span className="font-display font-bold text-4xl text-dz-dinar">{p.price}</span>
-                  <span className="ml-2 text-sm text-white/45 font-mono">{p.note}</span>
-                </div>
-                <p className="text-[12px] text-white/45 mb-5">{p.per}</p>
+                {t('lpPriceCta')}
+              </button>
+            </motion.div>
+          ))}
+        </div>
 
-                <ul className="space-y-2 mb-7 text-[13px] text-white/60 flex-1">
-                  {['Accès à tous les 12 outils IA', 'Mises à jour incluses', 'Support admin via Telegram'].map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <span className="text-dz-emerald mt-0.5">✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
+        <p className={cn('text-center text-[11px] text-white/30 mt-8', label)}>
+          {t('lpPriceNote')}
+        </p>
+      </section>
 
-                <button
-                  type="button"
-                  onClick={() => handleSubscribe(p.id)}
-                  className={cn(
-                    'w-full rounded-xl px-4 py-3 text-sm font-bold transition-all active:scale-[0.98] cursor-pointer',
-                    p.popular
-                      ? 'bg-linear-to-r from-dz-emerald to-dz-gold text-black hover:shadow-[0_4px_25px_rgba(242,254,0,0.25)] shadow-lg'
-                      : 'bg-linear-to-r from-white/5 to-white/[0.02] border border-white/15 hover:bg-white/10 hover:border-dz-emerald/40 hover:shadow-[0_4px_20px_rgba(0,242,254,0.12)]'
-                  )}
-                >
-                  S'abonner
-                </button>
-              </motion.div>
-            ))}
-          </div>
-
-          <p className="text-center text-[11px] text-white/30 font-mono mt-8">
-            Après paiement, envoie la facture (PDF / photo) à l'admin — accès activé manuellement en 24h.
+      {/* CTA BAND */}
+      <section className="relative overflow-hidden py-20 sm:py-24">
+        <div className="absolute inset-0 bg-dz-emerald/[0.04] blur-[100px]" />
+        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
+            {t('lpCtaTitle')}
+          </h2>
+          <p className="mt-4 text-white/45 text-base leading-relaxed">
+            {t('lpCtaDesc')}
           </p>
+          <button
+            type="button"
+            onClick={() => navigate('/register')}
+            className="btn-dz-primary mx-auto mt-8"
+          >
+            {t('lpCtaButton')}
+          </button>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/5 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/30 font-mono">
-          <p>© 2026 DzAds AI — DZ-Commerce OS · Conçu pour le marché algérien</p>
-          <p className="flex items-center gap-3">
-            <span className="text-dz-emerald/70">v2.4.0</span>
-            <span>COD · 58 wilayas · DZD</span>
-          </p>
+      <footer className="border-t border-white/[0.04] py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/30">
+          <p className={label}>{t('lpFooter').split('EcomFlow AI').map((part, i, arr) => (
+            i < arr.length - 1
+              ? <Fragment key={i}>{part}<span className="font-bold brand-shimmer">EcomFlow AI</span></Fragment>
+              : <Fragment key={i}>{part}</Fragment>
+          ))}</p>
+          <p className={cn('text-dz-emerald/70', label)}>{t('lpFooterMeta')}</p>
         </div>
       </footer>
     </div>

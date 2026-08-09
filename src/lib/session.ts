@@ -102,3 +102,29 @@ export function setSessionCookie(res: Response, token: string) {
 export function clearSessionCookie(res: Response) {
   res.clearCookie(SESSION_COOKIE, { path: "/" });
 }
+
+// ---- Password reset tokens --------------------------------------------------
+
+const RESET_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+export function signResetToken(email: string): string {
+  const payload = JSON.stringify({ purpose: 'password_reset', email: email.toLowerCase(), exp: Date.now() + RESET_TTL_MS });
+  const body = Buffer.from(payload).toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+
+export function verifyResetToken(token: string): { email: string } | null {
+  try {
+    const [body, sig] = token.split('.');
+    if (!body || !sig) return null;
+    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (payload.purpose !== 'password_reset') return null;
+    if (Date.now() > payload.exp) return null;
+    return { email: payload.email };
+  } catch {
+    return null;
+  }
+}

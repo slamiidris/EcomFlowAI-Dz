@@ -31,9 +31,18 @@
         }
       })();
     </script>
+    <script>
+      // Apply stored theme before React mounts to prevent flash
+      (function() {
+        try {
+          var t = localStorage.getItem('theme');
+          document.documentElement.classList.toggle('dark', t !== 'light');
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DzAds AI - E-commerce Algeria</title>
+    <title>EcomFlow AI — AI-Powered Ecommerce Marketing</title>
   </head>
   <body>
     <div id="root"></div>

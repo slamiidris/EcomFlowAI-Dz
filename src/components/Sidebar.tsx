@@ -3,18 +3,11 @@ import {
   LayoutDashboard,
   Clapperboard,
   Wand2,
-  TrendingUp,
   Settings,
   LogOut,
   Menu,
   X,
-  Radar,
-  CalendarDays,
-  Bot,
-  MessageSquareQuote,
   Layers,
-  Camera,
-  Box,
   GripVertical,
   ArrowUpDown,
   Check,
@@ -28,6 +21,7 @@ import { preferencesApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import ecomflowLogo from '../images/EcomFlow.png';
 
 type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
 
@@ -37,34 +31,20 @@ interface SidebarProps {
 }
 
 const navKeyMap: Record<string, string> = {
-  images: 'menuPhotos',
   dashboard: 'menuDashboard',
   video: 'menuVideo',
   landing: 'menuLanding',
   assembler: 'menuAssembler',
   calculator: 'menuCalculator',
-  trends: 'menuTrends',
   settings: 'menuSettings',
-  darja: 'menuDarja',
-  analyzer: 'menuAnalyzer',
-  catalog: 'menuCatalog',
-  scout: 'menuScout',
-  calendar: 'menuCalendar',
 };
 
 const defaultNavItems = [
-  { id: 'dashboard', label: 'Dashboard Ventes', icon: LayoutDashboard, color: 'text-emerald-400' },
-  { id: 'video', label: 'Pubs Vidéo TikTok/FB', icon: Clapperboard, color: 'text-purple-400' },
-  { id: 'landing', label: 'Tunnels & Landing Page', icon: Wand2, color: 'text-blue-400' },
-  { id: 'images', label: 'Studio Photos Produit', icon: Camera, color: 'text-cyan-400' },
-  { id: 'darja', label: 'Annonces Darja', icon: MessageSquareQuote, color: 'text-lime-400' },
-  { id: 'analyzer', label: 'Consultant IA Produit', icon: Bot, color: 'text-pink-400' },
-  { id: 'catalog', label: 'Catalogue Produits', icon: Box, color: 'text-orange-400' },
-  { id: 'scout', label: 'Scout Telegram', icon: Radar, color: 'text-teal-400' },
-  { id: 'calendar', label: 'Calendrier Contenu', icon: CalendarDays, color: 'text-sky-400' },
-  { id: 'assembler', label: 'Constructeur de LP', icon: Layers, color: 'text-violet-400' },
-  { id: 'trends', label: 'Produits Gagnants', icon: TrendingUp, color: 'text-rose-400' },
-  { id: 'calculator', label: 'Calculateur Marge COD', icon: Coins, color: 'text-amber-400' },
+  { id: 'dashboard', label: 'Dashboard Ventes', icon: LayoutDashboard, color: 'text-white/40' },
+  { id: 'video', label: 'Pubs Vidéo TikTok/FB', icon: Clapperboard, color: 'text-white/40' },
+  { id: 'landing', label: 'Tunnels & Landing Page', icon: Wand2, color: 'text-white/40' },
+  { id: 'assembler', label: 'Constructeur de LP', icon: Layers, color: 'text-white/40' },
+  { id: 'calculator', label: 'Calculateur Marge COD', icon: Coins, color: 'text-white/40' },
 ];
 
 const getStoredNavItems = () => {
@@ -136,15 +116,13 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       <div className="p-3 sm:p-4 flex items-center justify-between pb-3">
         {isOpen && (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-linear-to-tr from-dz-gold via-dz-amber to-dz-emerald rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-sm sm:text-base shadow-[0_0_15px_rgba(16,185,129,0.25)] text-white border border-white/20 animate-float shrink-0">
-              🛍️
-            </div>
+            <img src={ecomflowLogo} alt="EcomFlow AI" className="w-9 h-9 rounded-full object-cover shadow-[0_0_12px_rgba(212,164,76,0.12)] border border-white/10 shrink-0" />
             <div className="flex flex-col min-w-0 truncate">
               <span className="font-black text-xs sm:text-sm tracking-tight text-transparent bg-clip-text bg-linear-to-r from-white via-slate-100 to-dz-emerald truncate">
-                DZ-Commerce OS
+                EcomFlow AI
               </span>
               <span className="text-[8px] font-mono text-dz-gold uppercase tracking-wider truncate">
-                E-Com AI Platform
+                AI-Powered Ecommerce Marketing
               </span>
             </div>
           </div>
@@ -221,17 +199,17 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               onClick={() => setActiveTab(item.id as NavItem)}
               className={cn(
                 "w-full flex items-center gap-2.5 p-2 sm:p-2.5 rounded-xl transition-all group relative cursor-pointer",
-                activeTab === item.id 
-                  ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white shadow-[0_2px_15px_rgba(0,242,254,0.12)] border border-dz-emerald/30" 
+                activeTab === item.id
+                  ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30"
                   : "text-white/40 border border-transparent hover:bg-white/5 hover:text-white"
               )}
             >
               {activeTab === item.id && (
-                <div className="absolute left-0 w-1 h-5 bg-linear-to-b from-dz-gold to-dz-emerald rounded-r-full shadow-[0_0_8px_rgba(0,242,254,0.8)]" />
+                <div className="absolute left-0 w-1 h-5 bg-linear-to-b from-dz-gold to-dz-emerald rounded-r-full" />
               )}
               <item.icon size={16} className={cn(
                 "shrink-0 transition-all duration-300 group-hover:scale-110",
-                activeTab === item.id ? "text-dz-emerald scale-105 drop-shadow-[0_0_6px_rgba(0,242,254,0.5)]" : cn("opacity-60 group-hover:opacity-100", item.color)
+                activeTab === item.id ? "text-dz-emerald scale-105" : cn("opacity-60 group-hover:opacity-100", item.color)
               )} />
               {isOpen && <span className="text-[10.5px] font-bold tracking-wider uppercase select-none truncate text-left font-arabic">{t(navKeyMap[item.id] || '', item.label)}</span>}
             </button>
@@ -270,16 +248,74 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             )}
           </div>
         )}
-        <div className="p-2.5 glass-card border-dz-emerald/30 mb-2 hidden md:block shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-          <p className="text-[9px] uppercase tracking-widest text-transparent bg-clip-text bg-linear-to-r from-dz-emerald via-emerald-400 to-dz-gold font-black mb-1">Crédits E-Com AI</p>
-          <div className="flex justify-between items-end mb-1">
-            <span className="text-sm font-bold font-mono text-white">850</span>
-            <span className="text-[9px] text-white/40">/ 1000 Restant</span>
-          </div>
-          <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-            <div className="bg-linear-to-r from-dz-emerald to-dz-gold h-full w-[85%] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-          </div>
-        </div>
+        {isOpen && user && (() => {
+          const now = Date.now();
+          const isActive = user.planStatus === 'active';
+          const isLifetime = isActive && user.plan === 'lifetime' && !user.planExpiresAt;
+          const isExpired = isActive && user.planExpiresAt && user.planExpiresAt < now;
+          const daysLeft = isActive && user.planExpiresAt
+            ? Math.max(0, Math.ceil((user.planExpiresAt - now) / (1000 * 60 * 60 * 24)))
+            : null;
+          const totalDays = user.plan === 'monthly' ? 30 : user.plan === 'quarterly' ? 90 : null;
+          const elapsed = totalDays && user.planActiveFrom
+            ? Math.min(1, (now - user.planActiveFrom) / (totalDays * 1000 * 60 * 60 * 24))
+            : 0;
+
+          return (
+            <div className={cn(
+              'p-2.5 glass-card mb-2 hidden md:block transition-all',
+              isExpired ? 'border-rose-500/30' : isActive ? 'border-dz-emerald/30' : 'border-white/10'
+            )}>
+              {isActive && !isExpired ? (
+                <>
+                  <p className="text-[9px] uppercase tracking-widest text-transparent bg-clip-text bg-linear-to-r from-dz-emerald via-dz-gold to-dz-gold font-black mb-1">
+                    {t('sidebarSubActive')}
+                  </p>
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-sm font-bold font-mono text-white">
+                      {isLifetime ? '∞' : daysLeft}
+                    </span>
+                    <span className="text-[9px] text-white/40">
+                      {isLifetime ? t('sidebarSubLifetime') : t('sidebarSubDaysLeft')}
+                    </span>
+                  </div>
+                  {!isLifetime && totalDays && (
+                    <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                      <div
+                        className="bg-linear-to-r from-dz-emerald to-dz-gold h-full rounded-full transition-all duration-700"
+                        style={{ width: `${Math.max(5, (1 - elapsed) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : isExpired ? (
+                <>
+                  <p className="text-[9px] uppercase tracking-widest text-rose-400 font-black mb-1">
+                    {t('sidebarSubExpired')}
+                  </p>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-change', { detail: 'settings' }))}
+                    className="text-[10px] text-dz-emerald hover:text-dz-gold transition-colors cursor-pointer"
+                  >
+                    {t('sidebarSubUpgrade')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[9px] uppercase tracking-widest text-white/40 font-black mb-1">
+                    {t('sidebarSubNoPlan')}
+                  </p>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nav-change', { detail: 'settings' }))}
+                    className="text-[10px] text-dz-emerald hover:text-dz-gold transition-colors cursor-pointer"
+                  >
+                    {t('sidebarSubUpgrade')}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="space-y-0.5">
           {/* App Version Icon & Badge */}
@@ -317,12 +353,12 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             onClick={() => setActiveTab('settings')}
             className={cn(
               "w-full flex items-center gap-2.5 p-2 transition-all rounded-xl active:scale-95 group cursor-pointer",
-              activeTab === 'settings' 
-                ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30 shadow-[0_2px_15px_rgba(0,242,254,0.12)]" 
+              activeTab === 'settings'
+                ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30"
                 : "text-white/30 border border-transparent hover:text-white hover:bg-white/5"
             )}
           >
-            <Settings size={16} className={cn("transition-transform group-hover:rotate-45 shrink-0", activeTab === 'settings' ? "text-dz-emerald drop-shadow-[0_0_6px_rgba(0,242,254,0.5)]" : "")} />
+            <Settings size={16} className={cn("transition-transform group-hover:rotate-45 shrink-0", activeTab === 'settings' ? "text-dz-emerald" : "")} />
             {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('menuSettings', 'Paramètres')}</span>}
           </button>
           <button

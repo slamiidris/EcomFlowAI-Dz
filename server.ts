@@ -7,10 +7,12 @@ import { getTelegramPulse } from "./server-telegram";
 import { prisma } from "./src/lib/prisma";
 import { authRouter } from "./src/routes/auth";
 import { catalogRouter } from "./src/routes/catalog";
+import dashboardRouter from "./src/routes/dashboard";
 import { historyRouter } from "./src/routes/history";
 import { preferencesRouter } from "./src/routes/preferences";
 import { sessionsRouter } from "./src/routes/sessions";
 import { settingsRouter } from "./src/routes/settings";
+import adminRouter from "./src/routes/admin";
 
 // Keep in sync with src/services/gemini.ts MODEL_NAME.
 const MODEL_NAME = "gemini-3-flash-preview";
@@ -24,10 +26,12 @@ app.use(express.json({ limit: '10mb' })); // Increase limit for images
 // Register all API routes before the SPA catch-all.
 app.use(authRouter);
 app.use(catalogRouter);
+app.use(dashboardRouter);
 app.use(historyRouter);
 app.use(preferencesRouter);
 app.use(sessionsRouter);
 app.use(settingsRouter);
+app.use(adminRouter);
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,

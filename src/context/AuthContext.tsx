@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { preferencesApi } from '../services/api';
+import { preferencesApi, authApi, OtpChallenge } from '../services/api';
 
 export type PlanId = 'monthly' | 'quarterly' | 'lifetime';
 
@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string;
   name: string;
   avatar?: string;
+  isAdmin?: boolean;
   plan: PlanId | null;
   planStatus: 'pending' | 'active' | null;
   planSelectedAt?: number;
@@ -20,7 +21,16 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   isMock: boolean;
+  /** Start Google OAuth (redirect). */
   login: () => void;
+  /** Register with name + email + password → sends a verification OTP. */
+  register: (name: string, email: string, password: string) => Promise<OtpChallenge>;
+  /** Email + password → sends a 6-digit OTP to the inbox. */
+  loginWithEmail: (email: string, password: string) => Promise<OtpChallenge>;
+  /** Confirm the 6-digit OTP and open the session. */
+  verifyOtp: (email: string, code: string) => Promise<void>;
+  /** Request a fresh OTP (rate-limited server-side). */
+  resendOtp: (email: string) => Promise<{ ok: boolean; email: string; expiresInSec: number }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   selectPlan: (plan: PlanId) => Promise<AuthUser>;
@@ -83,6 +93,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/api/auth/google';
   }, []);
 
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    return authApi.register(name, email, password);
+  }, []);
+
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
+    return authApi.login(email, password);
+  }, []);
+
+  const verifyOtp = useCallback(async (email: string, code: string) => {
+    const data = await authApi.verifyOtp(email, code);
+    setUser(data.user);
+    setIsMock(false);
+    if (data.user) syncPrefsToLocal();
+  }, []);
+
+  const resendOtp = useCallback(async (email: string) => {
+    return authApi.resendOtp(email);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -125,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isMock, login, logout, refresh, selectPlan, syncPreferences }}>
+    <AuthContext.Provider value={{ user, loading, isMock, login, register, loginWithEmail, verifyOtp, resendOtp, logout, refresh, selectPlan, syncPreferences }}>
       {children}
     </AuthContext.Provider>
   );

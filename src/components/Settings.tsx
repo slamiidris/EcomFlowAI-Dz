@@ -108,28 +108,28 @@ export default function Settings() {
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">Gemini AI</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.geminiApiKey ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/10")} />
+            <div className={cn("w-2 h-2 rounded-full", settings.geminiApiKey ? "bg-emerald-500" : "bg-white/10")} />
             <span className="text-xs font-bold text-white">{settings.geminiApiKey ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">Facebook</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.facebookAdsToken ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/10")} />
+            <div className={cn("w-2 h-2 rounded-full", settings.facebookAdsToken ? "bg-emerald-500" : "bg-white/10")} />
             <span className="text-xs font-bold text-white">{settings.facebookAdsToken ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">TikTok</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.tiktokAdsToken ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/10")} />
+            <div className={cn("w-2 h-2 rounded-full", settings.tiktokAdsToken ? "bg-emerald-500" : "bg-white/10")} />
             <span className="text-xs font-bold text-white">{settings.tiktokAdsToken ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">Google</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.googleAdsDeveloperToken ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/10")} />
+            <div className={cn("w-2 h-2 rounded-full", settings.googleAdsDeveloperToken ? "bg-emerald-500" : "bg-white/10")} />
             <span className="text-xs font-bold text-white">{settings.googleAdsDeveloperToken ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>

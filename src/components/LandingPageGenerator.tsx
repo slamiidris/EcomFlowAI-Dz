@@ -1571,7 +1571,7 @@ export default function LandingPageGenerator() {
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-6 bg-slate-950 border-2 border-blue-500 rounded-3xl space-y-5 shadow-[0_0_30px_rgba(59,130,246,0.15)] text-white animate-fade-in relative overflow-hidden"
+                className="p-6 bg-slate-950 border-2 border-blue-500 rounded-3xl space-y-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] text-white animate-fade-in relative overflow-hidden"
               >
                 {/* Decorative background gradients */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />

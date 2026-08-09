@@ -30,12 +30,14 @@ router.post("/api/catalog", requireAuth, async (req, res) => {
       sellingPrice: b.sellingPrice,
       targetCpa: b.targetCpa,
       stock: b.stock ?? 0,
+      status: b.status ?? null,
       imageUrl: b.imageUrl,
       countries: b.countries ?? "DZ",
       description: b.description,
       euroRate: b.euroRate ?? 220,
       confRate: b.confRate ?? 0.8,
       delivRate: b.delivRate ?? 0.6,
+      sales: b.sales ?? 0,
     },
   });
   res.json(product);
@@ -57,12 +59,14 @@ router.put("/api/catalog/:id", requireAuth, async (req, res) => {
   if (b.sellingPrice !== undefined) data.sellingPrice = b.sellingPrice;
   if (b.targetCpa !== undefined) data.targetCpa = b.targetCpa;
   if (b.stock !== undefined) data.stock = b.stock;
+  if (b.status !== undefined) data.status = b.status;
   if (b.imageUrl !== undefined) data.imageUrl = b.imageUrl;
   if (b.countries !== undefined) data.countries = b.countries;
   if (b.description !== undefined) data.description = b.description;
   if (b.euroRate !== undefined) data.euroRate = b.euroRate;
   if (b.confRate !== undefined) data.confRate = b.confRate;
   if (b.delivRate !== undefined) data.delivRate = b.delivRate;
+  if (b.sales !== undefined) data.sales = b.sales;
   const product = await prisma.productCatalog.update({ where: { id }, data });
   res.json(product);
 });

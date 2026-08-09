@@ -292,7 +292,7 @@ export default function TelegramProductScout() {
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                    className="h-full bg-emerald-500"
                   />
                 </div>
               )}
@@ -449,7 +449,7 @@ export default function TelegramProductScout() {
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
                         transition={{ ease: "circOut", duration: 0.5 }}
-                        className="h-full bg-linear-to-r from-emerald-600 to-emerald-400 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] relative overflow-hidden"
+                        className="h-full bg-linear-to-r from-emerald-600 to-emerald-400 rounded-full relative overflow-hidden"
                       >
                         <motion.div 
                           animate={{ x: ['-100%', '100%'] }}
@@ -501,7 +501,7 @@ export default function TelegramProductScout() {
                       >
                         <div className={cn(
                           "w-1.5 h-1.5 rounded-full shrink-0",
-                          loadingStep > idx ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : 
+                          loadingStep > idx ? "bg-emerald-500" :
                           loadingStep === idx ? "bg-emerald-400 animate-pulse" : "bg-white/10"
                         )} />
                         <span className="truncate">{step.split('...')[0]}</span>
