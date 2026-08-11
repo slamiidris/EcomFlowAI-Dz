@@ -7,21 +7,21 @@ datasource db {
 }
 
 model ApiSettings {
-  id                       String @id @default(uuid())
-  userId                   String @unique @map("user_id")
-  facebookAdsToken         String? @map("facebook_ads_token")
-  facebookAccountId        String? @map("facebook_account_id")
-  tiktokAdsToken           String? @map("tiktok_ads_token")
-  tiktokAccountId          String? @map("tiktok_account_id")
-  googleAdsCustomerId      String? @map("google_ads_customer_id")
-  googleAdsDeveloperToken  String? @map("google_ads_developer_token")
-  snapAdsToken             String? @map("snap_ads_token")
-  snapAccountId            String? @map("snap_account_id")
-  geminiApiKey             String? @map("gemini_api_key")
-  workspaceName            String  @default("E-com DZ Workspace") @map("workspace_name")
-  customApiToken           String? @map("custom_api_token")
-  updatedAt                DateTime @updatedAt @map("updated_at")
-  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                      String   @id @default(uuid())
+  userId                  String   @unique @map("user_id")
+  facebookAdsToken        String?  @map("facebook_ads_token")
+  facebookAccountId       String?  @map("facebook_account_id")
+  tiktokAdsToken          String?  @map("tiktok_ads_token")
+  tiktokAccountId         String?  @map("tiktok_account_id")
+  googleAdsCustomerId     String?  @map("google_ads_customer_id")
+  googleAdsDeveloperToken String?  @map("google_ads_developer_token")
+  snapAdsToken            String?  @map("snap_ads_token")
+  snapAccountId           String?  @map("snap_account_id")
+  geminiApiKey            String?  @map("gemini_api_key")
+  workspaceName           String   @default("E-com DZ Workspace") @map("workspace_name")
+  customApiToken          String?  @map("custom_api_token")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("api_settings")
 }
@@ -30,11 +30,11 @@ model EmailOtp {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   codeHash  String   @map("code_hash")
-  reason    String   @default("verification") // verification | login
-  attempts  Int      @default(0) // failed verification counter (lockout)
+  reason    String   @default("verification")
   expiresAt DateTime @map("expires_at")
   used      Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
+  attempts  Int      @default(0)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -80,75 +80,75 @@ model LpSession {
 }
 
 model ProductCatalog {
-  id            String    @id @default(uuid())
-  userId        String    @map("user_id")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
   name          String
   category      String
-  purchasePrice Decimal?  @map("purchase_price") @db.Decimal(12, 2)
-  sellingPrice  Decimal?  @map("selling_price") @db.Decimal(12, 2)
-  targetCpa     Decimal?  @map("target_cpa") @db.Decimal(8, 2)
-  stock         Int       @default(0)
+  purchasePrice Decimal? @map("purchase_price") @db.Decimal(12, 2)
+  sellingPrice  Decimal? @map("selling_price") @db.Decimal(12, 2)
+  targetCpa     Decimal? @map("target_cpa") @db.Decimal(8, 2)
+  stock         Int      @default(0)
   status        String?
-  imageUrl      String?   @map("image_url")
-  countries     String    @default("DZ")
+  imageUrl      String?  @map("image_url")
+  countries     String   @default("DZ")
   description   String?
-  sales         Int       @default(0)
-  euroRate      Decimal   @default(220) @map("euro_rate") @db.Decimal(8, 2)
-  confRate      Decimal   @default(0.80) @map("conf_rate") @db.Decimal(5, 4)
-  delivRate     Decimal   @default(0.60) @map("deliv_rate") @db.Decimal(5, 4)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sales         Int      @default(0)
+  euroRate      Decimal  @default(220) @map("euro_rate") @db.Decimal(8, 2)
+  confRate      Decimal  @default(0.80) @map("conf_rate") @db.Decimal(5, 4)
+  delivRate     Decimal  @default(0.60) @map("deliv_rate") @db.Decimal(5, 4)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("product_catalog")
 }
 
 model UserPreferences {
-  id                     String   @id @default(uuid())
-  userId                 String   @unique @map("user_id")
-  toolsOrder             String[] @default([]) @map("tools_order")
-  dashboardConfig        Json     @default("{}") @map("dashboard_config")
-  dashboardWidgetOrder   String[] @default(["featured", "stats", "geo", "prediction", "history"]) @map("dashboard_widget_order")
-  language               String   @default("fr")
-  theme                  String   @default("dark")
-  lastImage              Json?    @map("last_image")
-  lastScript             Json?    @map("last_script")
-  lastLpActiveId         String?  @map("last_lp_active_id")
-  lastChatActiveId       String?  @map("last_chat_active_id")
-  updatedAt              DateTime @updatedAt @map("updated_at")
-  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+  toolsOrder           String[] @default([]) @map("tools_order")
+  dashboardConfig      Json     @default("{}") @map("dashboard_config")
+  dashboardWidgetOrder String[] @default(["featured", "stats", "geo", "prediction", "history"]) @map("dashboard_widget_order")
+  language             String   @default("fr")
+  theme                String   @default("dark")
+  lastImage            Json?    @map("last_image")
+  lastScript           Json?    @map("last_script")
+  lastLpActiveId       String?  @map("last_lp_active_id")
+  lastChatActiveId     String?  @map("last_chat_active_id")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
 }
 
 model User {
-  id                  String    @id @default(uuid())
-  email               String    @unique
-  name                String
-  passwordHash        String?   @map("password_hash")
-  emailVerifiedAt     DateTime? @map("email_verified_at")
-  avatarUrl           String?   @map("avatar_url")
-  isAdmin             Boolean   @default(false) @map("is_admin")
-  plan                String?
-  planStatus          String?   @map("plan_status")
-  planSelectedAt      DateTime? @map("plan_selected_at")
-  planActiveFrom      DateTime? @map("plan_active_from")
-  planExpiresAt       DateTime? @map("plan_expires_at")
-  planDays            Int?      @map("plan_days")
-  paymentProof        String?   @map("payment_proof")
-  paymentMethod       String?   @map("payment_method")
-  paymentSubmittedAt  DateTime? @map("payment_submitted_at")
-  paymentNote         String?   @map("payment_note")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-  apiSettings         ApiSettings?
-  chatSessions        ChatSession[]
-  emailOtps           EmailOtp[]
-  generationHistory   GenerationHistory[]
-  lpSessions          LpSession[]
-  productCatalog      ProductCatalog[]
-  userPreferences     UserPreferences?
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  name               String
+  avatarUrl          String?             @map("avatar_url")
+  plan               String?
+  planStatus         String?             @map("plan_status")
+  planSelectedAt     DateTime?           @map("plan_selected_at")
+  planActiveFrom     DateTime?           @map("plan_active_from")
+  planExpiresAt      DateTime?           @map("plan_expires_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  emailVerifiedAt    DateTime?           @map("email_verified_at")
+  passwordHash       String?             @map("password_hash")
+  isAdmin            Boolean             @default(false) @map("is_admin")
+  paymentMethod      String?             @map("payment_method")
+  paymentNote        String?             @map("payment_note")
+  paymentProof       String?             @map("payment_proof")
+  paymentSubmittedAt DateTime?           @map("payment_submitted_at")
+  planDays           Int?                @map("plan_days")
+  apiSettings        ApiSettings?
+  chatSessions       ChatSession[]
+  emailOtps          EmailOtp[]
+  generationHistory  GenerationHistory[]
+  lpSessions         LpSession[]
+  productCatalog     ProductCatalog[]
+  userPreferences    UserPreferences?
 
   @@map("users")
 }
@@ -159,12 +159,9 @@ model PaymentMethod {
   name         String
   description  String?
   emoji        String   @default("💳")
-  // 'email' → "send money to adminEmail then submit proof"
-  // 'bank'  → "bank transfer to the account in `details`"
-  // 'manual'→ generic: `instructions` steps + copyable rows in `details`
   type         String   @default("manual")
-  instructions Json     @default("[]") // string[] of numbered steps
-  details      Json? // { beneficiary?, iban?, bic?, idNumber?, target?, rows?: [{label,value}] }
+  instructions Json     @default("[]")
+  details      Json?
   enabled      Boolean  @default(true)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now()) @map("created_at")
@@ -179,7 +176,7 @@ model Announcement {
   title     String
   message   String
   emoji     String    @default("📢")
-  kind      String    @default("info") // info | warning | success | promo
+  kind      String    @default("info")
   active    Boolean   @default(true)
   startsAt  DateTime? @map("starts_at")
   expiresAt DateTime? @map("expires_at")
@@ -195,8 +192,8 @@ model HotDeal {
   title       String
   description String?
   emoji       String   @default("🔥")
-  badge       String? // e.g. "HOT", "PROMO", "-30%"
-  price       String? // display string, e.g. "1 500 DA"
+  badge       String?
+  price       String?
   link        String?
   active      Boolean  @default(true)
   sortOrder   Int      @default(0)
@@ -207,20 +204,32 @@ model HotDeal {
   @@map("hot_deals")
 }
 
-// Singleton platform config — editable plan prices + currency + contact
-// settings. Exactly one row, id = "singleton" (upserted on read if missing).
 model PlatformConfig {
   id               String   @id @default("singleton")
   currencyCode     String   @default("DA")
   currencySymbol   String   @default("DA")
-  currencyPosition String   @default("after") // "before" | "after"
+  currencyPosition String   @default("after")
   monthlyPrice     Int      @default(1500)
   quarterlyPrice   Int      @default(3500)
   lifetimePrice    Int      @default(15000)
-  whatsappNumber   String   @default("")
-  adminTelegram    String   @default("")
-  adminEmail       String   @default("")
   updatedAt        DateTime @updatedAt @map("updated_at")
+  adminEmail       String   @default("")
+  adminTelegram    String   @default("")
+  whatsappNumber   String   @default("")
 
   @@map("platform_config")
+}
+
+model Guide {
+  id          String   @id @default(uuid())
+  title       String
+  youtubeUrl  String   @map("youtube_url")
+  description String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([active, sortOrder])
+  @@map("guides")
 }

@@ -6,6 +6,7 @@ import { hasActivePlan } from '../lib/access';
 import { useLanguage } from '../context/LanguageContext';
 import { dashboardApi, type AiUsageSummary } from '../services/api';
 import { CORE_TOOLS, type AiTool } from '../lib/tools';
+import { AnnouncementsWidget, HotDealsWidget, GuidesWidget } from './DashboardContentWidgets';
 
 const openCheckout = () => window.dispatchEvent(new CustomEvent('dz_open_checkout'));
 const openTool = (id: string) => window.dispatchEvent(new CustomEvent('nav-change', { detail: id }));
@@ -152,12 +153,17 @@ export default function DashboardHome() {
         ))}
       </div>
 
+      {/* Announcements & Hot deals & Video Guides */}
+      <AnnouncementsWidget />
+      <HotDealsWidget />
+      <GuidesWidget />
+
       {/* Upgrade banner — only when the paid tools are locked */}
       {!hasPlan && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-dz-dinar/30 bg-dz-dinar/[0.06] px-4 py-2.5">
           <p className="text-[11px] sm:text-xs text-white/70 flex items-center gap-2">
             <Sparkles size={14} className="text-dz-dinar shrink-0" />
-            Débloque les outils IA avec un abonnement.
+            {t('freeTrialBannerText', "Profitez de 7 jours d'essai gratuit pour débloquer tous les outils IA !")}
           </p>
           <button
             type="button"

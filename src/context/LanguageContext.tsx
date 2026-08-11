@@ -1418,6 +1418,16 @@ export const translations: TranslationDictionary = {
     ar: "صفحة هبوط · جهاز ألعاب",
     en: "Landing Page · Gaming Console",
   },
+  lpShowcaseCard3Title: {
+    fr: "Landing Page · Gant de Douche 5en1",
+    ar: "صفحة هبوط · دوش استحمام 5 في 1",
+    en: "Landing Page · 5-in-1 Shower Brush",
+  },
+  lpShowcaseCard4Title: {
+    fr: "Landing Page · Douche Portable",
+    ar: "صفحة هبوط · دوش متنقل",
+    en: "Landing Page · Portable Shower",
+  },
   lpPriceLabel: {
     fr: "Paiement en DZD · activation manuelle",
     ar: "الدفع بالدينار · تفعيل يدوي",
@@ -1493,6 +1503,46 @@ export const translations: TranslationDictionary = {
     ar: "v2.4.0 · بالذكاء الاصطناعي · مصمم للتجارة الإلكترونية",
     en: "v2.4.0 · AI-powered · Built for ecommerce",
   },
+  freeTrialAnnouncementTitle: {
+    fr: "🎁 Offre Spéciale : 7 Jours d'Essai Gratuit !",
+    ar: "🎁 عرض خاص: 7 أيام تجربة مجانية!",
+    en: "🎁 Special Offer: 7-Day Free Trial!",
+  },
+  freeTrialAnnouncementMessage: {
+    fr: "Profitez de 7 jours d'accès gratuit et illimité à tous nos outils IA e-commerce pour tester et booster vos ventes dès aujourd'hui. Pour en profiter, contactez-nous sur WhatsApp !",
+    ar: "استمتع بـ 7 أيام من الوصول الكامل والمجاني إلى جميع أدوات الذكاء الاصطناعي لتجربتها وزيادة مبيعاتك اليوم. للحصول على العرض، تواصل معنا عبر WhatsApp!",
+    en: "Enjoy 7 days of full free access to all our e-commerce AI tools to test and boost your sales today. To claim it, contact us on WhatsApp!",
+  },
+  freeTrialBannerText: {
+    fr: "Profitez de 7 jours d'essai gratuit pour débloquer tous les outils IA !",
+    ar: "استمتع بـ 7 أيام تجربة مجانية لفتح جميع أدوات الذكاء الاصطناعي!",
+    en: "Enjoy 7 days free trial to unlock all AI tools!",
+  },
+  contactUsOnWhatsApp: {
+    fr: "Contactez-nous sur WhatsApp",
+    ar: "تواصل معنا عبر WhatsApp",
+    en: "Contact us on WhatsApp",
+  },
+  dashGuidesTitle: {
+    fr: "Guides & Tutoriels Vidéo",
+    ar: "الشروحات والفيديوهات التعليمية",
+    en: "Video Guides & Tutorials",
+  },
+  guidesCountLabel: {
+    fr: "tutoriels",
+    ar: "شروحات",
+    en: "tutorials",
+  },
+  watchOnYouTube: {
+    fr: "Regarder la vidéo",
+    ar: "مشاهدة الفيديو",
+    en: "Watch Video",
+  },
+  openYouTubeLink: {
+    fr: "Ouvrir dans YouTube",
+    ar: "فتح في YouTube",
+    en: "Open in YouTube",
+  },
 };
 
 interface LanguageContextType {
@@ -1517,7 +1567,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         return saved;
       }
     }
-    return 'fr';
+    return 'ar';
   });
 
   const dir: 'ltr' | 'rtl' = language === 'ar' ? 'rtl' : 'ltr';

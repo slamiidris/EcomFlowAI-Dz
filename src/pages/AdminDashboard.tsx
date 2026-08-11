@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, LayoutDashboard, Users, Key, CreditCard, Megaphone, Flame, Coins, Phone, ArrowLeft } from 'lucide-react';
+import { Shield, LayoutDashboard, Users, Key, CreditCard, Megaphone, Flame, Coins, Phone, ArrowLeft, PlaySquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import AdminOverview from './admin/AdminOverview';
@@ -9,10 +9,11 @@ import AdminApis from './admin/AdminApis';
 import AdminPayments from './admin/AdminPayments';
 import AdminAnnouncements from './admin/AdminAnnouncements';
 import AdminHotDeals from './admin/AdminHotDeals';
+import AdminGuides from './admin/AdminGuides';
 import AdminPricing from './admin/AdminPricing';
 import AdminContacts from './admin/AdminContacts';
 
-type AdminTab = 'overview' | 'users' | 'apis' | 'payments' | 'pricing' | 'announcements' | 'deals' | 'contacts';
+type AdminTab = 'overview' | 'users' | 'apis' | 'payments' | 'pricing' | 'announcements' | 'deals' | 'guides' | 'contacts';
 
 const TABS: { id: AdminTab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Vue d\'ensemble', icon: LayoutDashboard },
@@ -22,6 +23,7 @@ const TABS: { id: AdminTab; label: string; icon: typeof Users }[] = [
   { id: 'pricing', label: 'Tarifs', icon: Coins },
   { id: 'announcements', label: 'Annonces', icon: Megaphone },
   { id: 'deals', label: 'Offres Hot', icon: Flame },
+  { id: 'guides', label: 'Guides Vidéo', icon: PlaySquare },
   { id: 'contacts', label: 'Contacts', icon: Phone },
 ];
 
@@ -97,6 +99,7 @@ export default function AdminDashboard() {
             {tab === 'pricing' && <AdminPricing />}
             {tab === 'announcements' && <AdminAnnouncements />}
             {tab === 'deals' && <AdminHotDeals />}
+            {tab === 'guides' && <AdminGuides />}
             {tab === 'contacts' && <AdminContacts />}
           </motion.div>
         </AnimatePresence>

@@ -53,12 +53,25 @@ router.get('/api/payment-methods', async (_req, res) => {
 // GET /api/announcements/active — announcements live right now.
 router.get('/api/announcements/active', async (_req, res) => {
   try {
+    const count = await prisma.announcement.count();
+    if (count === 0) {
+      await prisma.announcement.create({
+        data: {
+          title: "🎁 Offre Spéciale : 7 Jours d'Essai Gratuit !",
+          message: "Profitez de 7 jours d'accès gratuit et illimité à tous nos outils IA e-commerce pour tester et booster vos ventes dès aujourd'hui. Pour en profiter, contactez-nous sur WhatsApp !",
+          emoji: "🎁",
+          kind: "promo",
+          active: true,
+        },
+      });
+    }
+
     const now = new Date();
     const items = await prisma.announcement.findMany({
       where: {
         active: true,
         OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-        AND: [{ expiresAt: null }, { expiresAt: { gte: now } }],
+        AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] }],
       },
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -81,6 +94,21 @@ router.get('/api/hot-deals/active', async (_req, res) => {
     res.json(items);
   } catch (err) {
     console.error('Get active hot deals error:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// GET /api/guides/active — video guides shown on the client dashboard.
+router.get('/api/guides/active', async (_req, res) => {
+  try {
+    const items = await prisma.guide.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      take: 30,
+    });
+    res.json(items);
+  } catch (err) {
+    console.error('Get active guides error:', err);
     res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
@@ -773,6 +801,72 @@ router.delete('/api/admin/hot-deals/:id', requireAuth, requireAdmin, async (req,
   } catch (err: any) {
     console.error('Delete hot deal error:', err);
     if (err?.code === 'P2025') return res.status(404).json({ error: 'Offre introuvable.' });
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+/* Admin — Video Guides                                                 */
+
+// GET /api/admin/guides
+router.get('/api/admin/guides', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const items = await prisma.guide.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+    res.json(items);
+  } catch (err) {
+    console.error('Admin list guides error:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// POST /api/admin/guides
+router.post('/api/admin/guides', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { title, youtubeUrl, description, active, sortOrder } = req.body || {};
+    if (!title || !youtubeUrl) return res.status(400).json({ error: 'Titre et lien YouTube requis.' });
+    const item = await prisma.guide.create({
+      data: {
+        title: String(title).trim(),
+        youtubeUrl: String(youtubeUrl).trim(),
+        description: description ? String(description).trim() : null,
+        active: active !== false,
+        sortOrder: Number(sortOrder) || 0,
+      },
+    });
+    res.json(item);
+  } catch (err) {
+    console.error('Create guide error:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// PUT /api/admin/guides/:id
+router.put('/api/admin/guides/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const body = req.body || {};
+    const data: Record<string, any> = {};
+    for (const k of ['title', 'youtubeUrl', 'description', 'active', 'sortOrder']) {
+      if (body[k] !== undefined) data[k] = body[k];
+    }
+    const item = await prisma.guide.update({ where: { id }, data });
+    res.json(item);
+  } catch (err: any) {
+    console.error('Update guide error:', err);
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Guide introuvable.' });
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// DELETE /api/admin/guides/:id
+router.delete('/api/admin/guides/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await prisma.guide.delete({ where: { id: String(req.params.id) } });
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error('Delete guide error:', err);
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Guide introuvable.' });
     res.status(500).json({ error: 'Erreur serveur.' });
   }
 });

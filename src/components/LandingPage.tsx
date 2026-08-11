@@ -8,8 +8,8 @@ import { useLanguage, Language } from '../context/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
 import { cn } from '../lib/utils';
 import ecomflowLogo from '../images/EcomFlow.png';
-import exemple1 from '../images/exemple1.webp';
-import exemple2 from '../images/exemple2.webp';
+import heroPhoto from '../images/photo.png';
+import workPhoto from '../images/work.png';
 
 // Market-pulse ticker content — capability phrases, no made-up stats or products.
 const TICKERS: Record<Language, string[]> = {
@@ -107,8 +107,7 @@ export default function LandingPage() {
   const activityItems = ACTIVITY[language];
 
   const showcaseItems = [
-    { src: exemple2, titleKey: 'lpShowcaseCard1Title' as const },
-    { src: exemple1, titleKey: 'lpShowcaseCard2Title' as const },
+    { src: workPhoto, titleKey: 'lpShowcaseCard1Title' as const },
   ];
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
@@ -171,200 +170,156 @@ export default function LandingPage() {
         <div className="absolute top-40 left-10 w-72 h-72 bg-dz-gold/[0.05] blur-[100px] rounded-full pointer-events-none" />
         <div className="absolute top-64 right-10 w-72 h-72 bg-dz-amber/[0.04] blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32 text-center">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] border border-white/[0.08] px-3.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] text-white/50">
-              <Zap size={11} /> {t('lpBadge')}
-            </span>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
+          {/* Split hero: Image left, Text right */}
+          <div className={cn(
+            'flex flex-col items-center gap-12 lg:gap-16',
+            isRTL ? 'lg:flex-row-reverse' : 'lg:flex-row'
+          )}>
+            {/* IMAGE COLUMN — Left */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, delay: 0.15 }}
+              className="relative w-full lg:w-[480px] shrink-0"
+            >
+              {/* Decorative glow */}
+              <div className="absolute -inset-8 bg-dz-gold/[0.06] blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute -inset-4 bg-dz-emerald/[0.04] blur-[60px] rounded-full pointer-events-none" />
 
-            <h1 className={cn(
-              'mt-8 text-5xl sm:text-7xl font-bold leading-[1.05]',
-              language === 'ar' ? 'font-arabic' : 'font-display tracking-[-0.04em]'
-            )}>
-              {t('lpHeadline')}
-              <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-dz-gold via-dz-emerald to-dz-dinar">
-                {t('lpHeadlineHighlight')}
+              {/* Decorative ring */}
+              <div className="absolute -top-6 -right-6 w-32 h-32 border border-dz-gold/10 rounded-full pointer-events-none" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 border border-dz-emerald/10 rounded-full pointer-events-none" />
+
+              {/* Floating dots */}
+              <div className="absolute top-8 -left-3 w-2 h-2 bg-dz-gold/30 rounded-full animate-float" />
+              <div className="absolute bottom-12 -right-2 w-1.5 h-1.5 bg-dz-emerald/40 rounded-full animate-float" style={{ animationDelay: '1.5s' }} />
+              <div className="absolute top-1/2 -right-5 w-1 h-1 bg-dz-amber/30 rounded-full animate-float" style={{ animationDelay: '3s' }} />
+
+              {/* Image frame */}
+              <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.02] p-3 shadow-[0_20px_80px_rgba(0,0,0,0.5)] backdrop-blur-sm group">
+                <div className="relative rounded-2xl overflow-hidden">
+                  <img
+                    src={heroPhoto}
+                    alt="EcomFlow AI — Product Analysis"
+                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                  />
+                  {/* Subtle overlay gradient */}
+                  <div className="absolute inset-0 bg-linear-to-t from-dz-green/20 via-transparent to-transparent pointer-events-none" />
+                </div>
+                {/* Frame glow on hover */}
+                <div className="absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/[0.05] group-hover:ring-dz-gold/20 transition-all duration-500 pointer-events-none" />
+              </div>
+            </motion.div>
+
+            {/* TEXT COLUMN — Right */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, delay: 0.25 }}
+              className="flex-1 text-center lg:text-right"
+            >
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] border border-white/[0.08] px-3.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] text-white/50">
+                <Zap size={11} /> {t('lpBadge')}
               </span>
-            </h1>
 
-            <p className="text-white/45 max-w-2xl mx-auto text-base sm:text-lg mt-6 leading-relaxed">
-              {t('lpDesc').split('EcomFlow AI').map((part, i, arr) => (
-                i < arr.length - 1
-                  ? <Fragment key={i}>{part}<span className="font-semibold brand-shimmer">EcomFlow AI</span></Fragment>
-                  : <Fragment key={i}>{part}</Fragment>
-              ))}
-            </p>
+              <h1 className={cn(
+                'mt-8 text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1]',
+                language === 'ar' ? 'font-arabic' : 'font-display tracking-[-0.04em]'
+              )}>
+                {t('lpHeadline')}
+                <br />
+                <span className="text-transparent bg-clip-text bg-linear-to-r from-dz-gold via-dz-emerald to-dz-dinar">
+                  {t('lpHeadlineHighlight')}
+                </span>
+              </h1>
 
-            <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <button
-                type="button"
-                onClick={() => navigate('/register')}
-                className="btn-dz-primary group w-full sm:w-auto"
-              >
-                {t('lpCtaPrimary')}
-                <ArrowIcon size={16} className={cn('opacity-60 transition-transform group-hover:translate-x-0.5', isRTL && 'group-hover:-translate-x-0.5')} />
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToId('how-it-works')}
-                className="text-[13px] text-white/40 hover:text-white transition-colors cursor-pointer"
-              >
-                {t('lpCtaSecondary')}
-              </button>
+              <p className="text-white/45 max-w-xl text-base sm:text-lg mt-6 leading-relaxed lg:mr-0">
+                {t('lpDesc').split('EcomFlow AI').map((part, i, arr) => (
+                  i < arr.length - 1
+                    ? <Fragment key={i}>{part}<span className="font-semibold brand-shimmer">EcomFlow AI</span></Fragment>
+                    : <Fragment key={i}>{part}</Fragment>
+                ))}
+              </p>
+
+              <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+                <button
+                  type="button"
+                  onClick={() => navigate('/register')}
+                  className="btn-dz-primary group w-full sm:w-auto"
+                >
+                  {t('lpCtaPrimary')}
+                  <ArrowIcon size={16} className={cn('opacity-60 transition-transform group-hover:translate-x-0.5', isRTL && 'group-hover:-translate-x-0.5')} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToId('how-it-works')}
+                  className="text-[13px] text-white/40 hover:text-white transition-colors cursor-pointer"
+                >
+                  {t('lpCtaSecondary')}
+                </button>
+              </div>
+
+              <p className={cn('flex items-center gap-1.5 text-[11px] text-white/25 mt-5', 'justify-center lg:justify-start', label)}>
+                {t('lpTrust')}
+              </p>
+
+              {/* Brand identity callout */}
+              <div className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-full bg-dz-emerald/[0.06] border border-dz-emerald/[0.12] backdrop-blur-sm">
+                <Sparkles size={13} className="text-dz-gold" />
+                <span className="text-[11px] text-white/40">Powered by</span>
+                <span className="text-[13px] font-bold brand-shimmer">EcomFlow AI</span>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* SHOWCASE — Single full-width work photo */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-16 mx-auto max-w-5xl group relative rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden cursor-pointer hover:border-dz-emerald/40 hover:shadow-[0_8px_60px_rgba(212,164,76,0.1)] transition-all duration-500"
+            id="showcase"
+            onClick={() => setPreviewIdx(0)}
+          >
+            {/* Browser chrome */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-white/[0.02]">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-rose-500/50" />
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500/50" />
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+              </div>
+              <div className="flex-1 flex justify-center">
+                <div className="px-3 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.05]">
+                  <span className="text-[8px] font-mono text-white/25">ecomflow.ai/landing</span>
+                </div>
+              </div>
             </div>
 
-            <p className={cn('flex items-center justify-center gap-1.5 text-[11px] text-white/25 mt-4', label)}>
-              {t('lpTrust')}
-            </p>
+            {/* Image */}
+            <div className="p-2">
+              <div className="relative rounded-xl overflow-hidden">
+                <img
+                  src={workPhoto}
+                  alt={t('lpShowcaseCard1Title')}
+                  loading="lazy"
+                  className="w-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.02]"
+                />
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-0 p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                  <span className="text-[10px] font-mono text-dz-emerald uppercase tracking-wider">View Full Preview →</span>
+                </div>
+              </div>
+            </div>
 
-            {/* Brand identity callout */}
-            <div className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full bg-dz-emerald/[0.06] border border-dz-emerald/[0.12] backdrop-blur-sm">
-              <Sparkles size={13} className="text-dz-gold" />
-              <span className="text-[11px] text-white/40">Powered by</span>
-              <span className="text-[13px] font-bold brand-shimmer">EcomFlow AI</span>
+            {/* Title bar */}
+            <div className="px-4 pb-3">
+              <p className={cn('text-[12px] font-semibold text-white/50 group-hover:text-white transition-colors', display)}>
+                {t('lpShowcaseCard1Title')}
+              </p>
             </div>
           </motion.div>
-
-          {/* HERO MOCKUP — Premium dashboard preview */}
-          <div className="relative isolate mt-16 mx-auto max-w-5xl text-left">
-            <div className="relative rounded-2xl border border-white/[0.08] bg-dz-card shadow-[0_25px_100px_rgba(0,0,0,0.6)] overflow-hidden">
-              {/* Browser chrome */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-                </div>
-                <div className="flex-1 flex justify-center">
-                  <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                    <Lock size={9} className="text-white/25" />
-                    <span className="text-[10px] font-mono text-white/30">{t('lpMockUrl')}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dashboard body */}
-              <div className="flex min-h-[320px] sm:min-h-[380px]">
-                {/* Sidebar */}
-                <div className="hidden sm:flex flex-col w-14 border-r border-white/[0.06] bg-white/[0.015] py-3 items-center gap-1.5">
-                  {[
-                    { active: true, icon: '📊' },
-                    { active: false, icon: '📦' },
-                    { active: false, icon: '🤖' },
-                    { active: false, icon: '⚡' },
-                    { active: false, icon: '🎨' },
-                    { active: false, icon: '🎬' },
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all',
-                        item.active
-                          ? 'bg-dz-emerald/15 border border-dz-emerald/25'
-                          : 'hover:bg-white/[0.04]'
-                      )}
-                    >
-                      {item.icon}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Main content */}
-                <div className="flex-1 p-4 sm:p-6">
-                  {/* KPI Row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                    {[
-                      { labelKey: 'lpKpiProducts', value: '8', delta: '+2', icon: '📦' },
-                      { labelKey: 'lpKpiAnalysis', value: '12', delta: '+4', icon: '🤖' },
-                      { labelKey: 'lpKpiLanding', value: '6', delta: '+1', icon: '⚡' },
-                      { labelKey: 'lpKpiCampaigns', value: '3', delta: '+1', icon: '🚀' },
-                    ].map((kpi) => (
-                      <div key={kpi.labelKey} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="text-xs">{kpi.icon}</span>
-                          <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t(kpi.labelKey)}</span>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="font-display text-lg sm:text-xl font-bold text-white">{kpi.value}</span>
-                          <span className="text-[9px] font-bold text-emerald-400">{kpi.delta}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Pipeline visualization */}
-                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpPipelineLabel')}</span>
-                      <div className="flex-1 h-px bg-white/[0.04]" />
-                    </div>
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      {pipelineSteps.map((step, i) => (
-                        <div key={step} className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className={cn(
-                            'w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold',
-                            i <= 2
-                              ? 'bg-dz-emerald/20 text-dz-emerald border border-dz-emerald/30'
-                              : 'bg-white/[0.04] text-white/30 border border-white/[0.06]'
-                          )}>
-                            {i + 1}
-                          </div>
-                          <span className={cn(
-                            'text-[10px] truncate hidden sm:inline',
-                            i <= 2 ? 'text-white/70' : 'text-white/25'
-                          )}>
-                            {step}
-                          </span>
-                          {i < 5 && <div className={cn('w-4 h-px shrink-0', i < 2 ? 'bg-dz-emerald/30' : 'bg-white/[0.06]')} />}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Mini chart + activity */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Chart area */}
-                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                      <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpChartLabel')}</span>
-                      <div className="flex items-end gap-1.5 mt-2 h-12">
-                        {[35, 50, 42, 65, 55, 78, 70, 85, 60, 92, 75, 88].map((h, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              'flex-1 rounded-sm transition-all',
-                              i >= 10 ? 'bg-dz-emerald/40' : 'bg-dz-emerald/15'
-                            )}
-                            style={{ height: `${h}%` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Recent activity */}
-                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                      <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpActivityLabel')}</span>
-                      <div className="space-y-2 mt-2">
-                        {activityItems.map((item, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="text-[10px]">{item.type}</span>
-                            <span className="text-[10px] text-white/50 truncate flex-1">{item.title}</span>
-                            <span className={cn('text-[8px] text-white/20', label)}>{item.time}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Glow behind mockup */}
-            <div className="absolute inset-0 -z-10 mx-auto max-w-5xl h-full">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-dz-emerald/[0.03] blur-[100px] rounded-full" />
-              <div className="absolute top-1/3 right-0 w-1/2 h-1/2 bg-dz-gold/[0.02] blur-[80px] rounded-full" />
-            </div>
-          </div>
         </div>
       </section>
 
@@ -455,45 +410,153 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SHOWCASE / EXAMPLES */}
-      <section id="showcase" className="py-24 sm:py-32 max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-14">
-          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>
-            {t('lpShowcaseLabel')}
-          </p>
+      {/* DASHBOARD MOCKUP — Platform preview (moved from hero) */}
+      <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-12">
+          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>{t('lpNavShowcase')}</p>
           <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
-            {t('lpShowcaseTitleA')}<span className="text-dz-emerald">{t('lpShowcaseTitleB')}</span>
+            {language === 'ar' ? 'تعرف على ' : 'See the '}
+            <span className="text-dz-emerald">{language === 'ar' ? 'المنصة' : 'Platform'}</span>
           </h2>
-          <p className="mt-3 text-white/45 text-sm max-w-xl mx-auto leading-relaxed">
-            {t('lpShowcaseDesc')}
-          </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          {showcaseItems.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: i * 0.12 }}
-              className="surface-card p-3 overflow-hidden group cursor-pointer"
-              onClick={() => setPreviewIdx(i)}
-            >
-              <div className="relative rounded-xl overflow-hidden">
-                <img
-                  src={item.src}
-                  alt={t(item.titleKey)}
-                  loading="lazy"
-                  className="w-full h-[480px] object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
-                />
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
-                <p className={cn('absolute bottom-3 left-4 right-4 text-[13px] font-semibold text-white drop-shadow-lg', display)}>
-                  {t(item.titleKey)}
-                </p>
+        <div className="relative isolate mx-auto max-w-5xl text-left">
+          <div className="relative rounded-2xl border border-white/[0.08] bg-dz-card shadow-[0_25px_100px_rgba(0,0,0,0.6)] overflow-hidden">
+            {/* Browser chrome */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
               </div>
-            </motion.div>
-          ))}
+              <div className="flex-1 flex justify-center">
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                  <Lock size={9} className="text-white/25" />
+                  <span className="text-[10px] font-mono text-white/30">{t('lpMockUrl')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Dashboard body */}
+            <div className="flex min-h-[320px] sm:min-h-[380px]">
+              {/* Sidebar */}
+              <div className="hidden sm:flex flex-col w-14 border-r border-white/[0.06] bg-white/[0.015] py-3 items-center gap-1.5">
+                {[
+                  { active: true, icon: '📊' },
+                  { active: false, icon: '📦' },
+                  { active: false, icon: '🤖' },
+                  { active: false, icon: '⚡' },
+                  { active: false, icon: '🎨' },
+                  { active: false, icon: '🎬' },
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      'w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all',
+                      item.active
+                        ? 'bg-dz-emerald/15 border border-dz-emerald/25'
+                        : 'hover:bg-white/[0.04]'
+                    )}
+                  >
+                    {item.icon}
+                  </div>
+                ))}
+              </div>
+
+              {/* Main content */}
+              <div className="flex-1 p-4 sm:p-6">
+                {/* KPI Row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  {[
+                    { labelKey: 'lpKpiProducts', value: '8', delta: '+2', icon: '📦' },
+                    { labelKey: 'lpKpiAnalysis', value: '12', delta: '+4', icon: '🤖' },
+                    { labelKey: 'lpKpiLanding', value: '6', delta: '+1', icon: '⚡' },
+                    { labelKey: 'lpKpiCampaigns', value: '3', delta: '+1', icon: '🚀' },
+                  ].map((kpi) => (
+                    <div key={kpi.labelKey} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-xs">{kpi.icon}</span>
+                        <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t(kpi.labelKey)}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-display text-lg sm:text-xl font-bold text-white">{kpi.value}</span>
+                        <span className="text-[9px] font-bold text-emerald-400">{kpi.delta}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pipeline visualization */}
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpPipelineLabel')}</span>
+                    <div className="flex-1 h-px bg-white/[0.04]" />
+                  </div>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {pipelineSteps.map((step, i) => (
+                      <div key={step} className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className={cn(
+                          'w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold',
+                          i <= 2
+                            ? 'bg-dz-emerald/20 text-dz-emerald border border-dz-emerald/30'
+                            : 'bg-white/[0.04] text-white/30 border border-white/[0.06]'
+                        )}>
+                          {i + 1}
+                        </div>
+                        <span className={cn(
+                          'text-[10px] truncate hidden sm:inline',
+                          i <= 2 ? 'text-white/70' : 'text-white/25'
+                        )}>
+                          {step}
+                        </span>
+                        {i < 5 && <div className={cn('w-4 h-px shrink-0', i < 2 ? 'bg-dz-emerald/30' : 'bg-white/[0.06]')} />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mini chart + activity */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Chart area */}
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                    <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpChartLabel')}</span>
+                    <div className="flex items-end gap-1.5 mt-2 h-12">
+                      {[35, 50, 42, 65, 55, 78, 70, 85, 60, 92, 75, 88].map((h, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            'flex-1 rounded-sm transition-all',
+                            i >= 10 ? 'bg-dz-emerald/40' : 'bg-dz-emerald/15'
+                          )}
+                          style={{ height: `${h}%` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recent activity */}
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                    <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpActivityLabel')}</span>
+                    <div className="space-y-2 mt-2">
+                      {activityItems.map((item, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-[10px]">{item.type}</span>
+                          <span className="text-[10px] text-white/50 truncate flex-1">{item.title}</span>
+                          <span className={cn('text-[8px] text-white/20', label)}>{item.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Glow behind mockup */}
+          <div className="absolute inset-0 -z-10 mx-auto max-w-5xl h-full">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-dz-emerald/[0.03] blur-[100px] rounded-full" />
+            <div className="absolute top-1/3 right-0 w-1/2 h-1/2 bg-dz-gold/[0.02] blur-[80px] rounded-full" />
+          </div>
         </div>
       </section>
 

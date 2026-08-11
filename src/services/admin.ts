@@ -145,6 +145,17 @@ export interface HotDeal {
   updatedAt: string;
 }
 
+export interface Guide {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+  description: string | null;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 async function http<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -200,6 +211,11 @@ export const adminApi = {
   createHotDeal: (body: Partial<HotDeal>) => http<HotDeal>('/api/admin/hot-deals', { method: 'POST', body: JSON.stringify(body) }),
   updateHotDeal: (id: string, body: Partial<HotDeal>) => http<HotDeal>(`/api/admin/hot-deals/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteHotDeal: (id: string) => http<{ ok: boolean }>(`/api/admin/hot-deals/${id}`, { method: 'DELETE' }),
+
+  guides: () => http<Guide[]>('/api/admin/guides'),
+  createGuide: (body: Partial<Guide>) => http<Guide>('/api/admin/guides', { method: 'POST', body: JSON.stringify(body) }),
+  updateGuide: (id: string, body: Partial<Guide>) => http<Guide>(`/api/admin/guides/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteGuide: (id: string) => http<{ ok: boolean }>(`/api/admin/guides/${id}`, { method: 'DELETE' }),
 };
 
 /* Public content endpoints (no auth) */
@@ -207,4 +223,5 @@ export const contentApi = {
   paymentMethods: () => http<PaymentMethod[]>('/api/payment-methods'),
   announcements: () => http<Announcement[]>('/api/announcements/active'),
   hotDeals: () => http<HotDeal[]>('/api/hot-deals/active'),
+  guides: () => http<Guide[]>('/api/guides/active'),
 };
