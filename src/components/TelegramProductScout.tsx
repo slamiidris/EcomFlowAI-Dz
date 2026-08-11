@@ -217,7 +217,7 @@ export default function TelegramProductScout() {
       if (isQuota) {
         setError("Quota Gemini épuisé ou limite de débit atteinte (Erreur 429). L'IA a besoin d'une pause ou votre forfait a atteint sa limite. Réessayez dans quelques minutes.");
       } else {
-        setError("Une erreur est survenue lors du scouting. Vérifiez votre connexion ou réessayez plus tard.");
+        setError(err.message || "Une erreur est survenue lors du scouting. Vérifiez votre connexion ou réessayez plus tard.");
       }
     } finally {
       clearInterval(progressInterval);

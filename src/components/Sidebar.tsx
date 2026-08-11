@@ -13,7 +13,10 @@ import {
   Check,
   RefreshCw,
   Tag,
-  Coins
+  Coins,
+  Shield,
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Reorder } from 'framer-motion';
@@ -21,9 +24,11 @@ import { preferencesApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { isToolPaid, hasActivePlan } from '../lib/access';
+import { useCountdown } from '../lib/countdown';
 import ecomflowLogo from '../images/EcomFlow.png';
 
-type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
+type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar' | 'contact';
 
 interface SidebarProps {
   activeTab: NavItem;
@@ -68,6 +73,8 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const { t, isRTL } = useLanguage();
   const toast = useToast();
   const { user, isMock, logout } = useAuth();
+  // Live countdown for an active subscription (ticks every second).
+  const planCountdown = useCountdown(user?.planExpiresAt ? new Date(user.planExpiresAt).getTime() : null);
   const [isOpen, setIsOpen] = useState(true);
   const [isReorderingMode, setIsReorderingMode] = useState(false);
   const [items, setItems] = useState<typeof defaultNavItems>(getStoredNavItems);
@@ -211,7 +218,14 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                 "shrink-0 transition-all duration-300 group-hover:scale-110",
                 activeTab === item.id ? "text-dz-emerald scale-105" : cn("opacity-60 group-hover:opacity-100", item.color)
               )} />
-              {isOpen && <span className="text-[10.5px] font-bold tracking-wider uppercase select-none truncate text-left font-arabic">{t(navKeyMap[item.id] || '', item.label)}</span>}
+              {isOpen && (
+                <>
+                  <span className="text-[10.5px] font-bold tracking-wider uppercase select-none truncate text-left font-arabic">{t(navKeyMap[item.id] || '', item.label)}</span>
+                  {isToolPaid(item.id) && !hasActivePlan(user) && (
+                    <Lock size={10} className="shrink-0 text-dz-dinar/70 ml-auto" />
+                  )}
+                </>
+              )}
             </button>
           ))}
         </nav>
@@ -250,15 +264,16 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         )}
         {isOpen && user && (() => {
           const now = Date.now();
+          // planExpiresAt / planActiveFrom arrive as ISO strings (Prisma DateTime);
+          // normalize to epoch ms so arithmetic below never yields NaN.
+          const planExpiresAt = user.planExpiresAt ? new Date(user.planExpiresAt).getTime() : null;
+          const planActiveFrom = user.planActiveFrom ? new Date(user.planActiveFrom).getTime() : null;
           const isActive = user.planStatus === 'active';
-          const isLifetime = isActive && user.plan === 'lifetime' && !user.planExpiresAt;
-          const isExpired = isActive && user.planExpiresAt && user.planExpiresAt < now;
-          const daysLeft = isActive && user.planExpiresAt
-            ? Math.max(0, Math.ceil((user.planExpiresAt - now) / (1000 * 60 * 60 * 24)))
-            : null;
-          const totalDays = user.plan === 'monthly' ? 30 : user.plan === 'quarterly' ? 90 : null;
-          const elapsed = totalDays && user.planActiveFrom
-            ? Math.min(1, (now - user.planActiveFrom) / (totalDays * 1000 * 60 * 60 * 24))
+          const isLifetime = isActive && user.plan === 'lifetime' && !planExpiresAt;
+          const isExpired = isActive && planExpiresAt != null && planExpiresAt < now;
+          const totalDays = user.planDays ?? (user.plan === 'monthly' ? 30 : user.plan === 'quarterly' ? 90 : null);
+          const elapsed = totalDays && planActiveFrom != null
+            ? Math.min(1, (now - planActiveFrom) / (totalDays * 1000 * 60 * 60 * 24))
             : 0;
 
           return (
@@ -273,12 +288,17 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                   </p>
                   <div className="flex justify-between items-end mb-1">
                     <span className="text-sm font-bold font-mono text-white">
-                      {isLifetime ? '∞' : daysLeft}
+                      {isLifetime ? '∞' : planCountdown.days}
                     </span>
                     <span className="text-[9px] text-white/40">
                       {isLifetime ? t('sidebarSubLifetime') : t('sidebarSubDaysLeft')}
                     </span>
                   </div>
+                  {!isLifetime && (
+                    <p className="font-mono text-[11px] text-dz-emerald tabular-nums tracking-wider mb-1.5">
+                      {String(planCountdown.hours).padStart(2, '0')}:{String(planCountdown.minutes).padStart(2, '0')}:{String(planCountdown.seconds).padStart(2, '0')}
+                    </p>
+                  )}
                   {!isLifetime && totalDays && (
                     <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
                       <div
@@ -361,6 +381,28 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             <Settings size={16} className={cn("transition-transform group-hover:rotate-45 shrink-0", activeTab === 'settings' ? "text-dz-emerald" : "")} />
             {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('menuSettings', 'Paramètres')}</span>}
           </button>
+
+          <button
+            onClick={() => setActiveTab('contact')}
+            className={cn(
+              "w-full flex items-center gap-2.5 p-2 transition-all rounded-xl active:scale-95 group cursor-pointer",
+              activeTab === 'contact'
+                ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30"
+                : "text-white/30 border border-transparent hover:text-white hover:bg-white/5"
+            )}
+          >
+            <MessageCircle size={16} className={cn("shrink-0", activeTab === 'contact' ? "text-dz-emerald" : "")} />
+            {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('menuContact', 'Contact & Support')}</span>}
+          </button>
+          {user?.isAdmin && (
+            <a
+              href="/admin"
+              className="w-full flex items-center gap-2.5 p-2 text-dz-gold/80 hover:text-dz-gold transition-all rounded-xl hover:bg-dz-gold/10 active:scale-95 group cursor-pointer"
+            >
+              <Shield size={16} className="transition-transform group-hover:-translate-y-0.5 shrink-0" />
+              {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">Admin</span>}
+            </a>
+          )}
           <button
             onClick={async () => {
               await logout();

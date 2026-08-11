@@ -5,9 +5,16 @@
 import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
 
-const SESSION_SECRET =
-  process.env.SESSION_SECRET ||
-  (process.env.NODE_ENV === "production" ? "" : "dzads-dev-session-secret");
+// Fail closed: in production the secret is mandatory. A missing/empty secret
+// would otherwise let anyone forge sessions AND password-reset tokens.
+const SESSION_SECRET = (() => {
+  const s = process.env.SESSION_SECRET;
+  if (s) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET must be set when NODE_ENV=production");
+  }
+  return "dzads-dev-session-secret"; // dev-only fallback
+})();
 
 export const SESSION_COOKIE = "dzads_session";
 const SESSION_MAX_AGE_MS = 30 * 24 * 3600 * 1000; // 30 days
@@ -94,6 +101,8 @@ export function setSessionCookie(res: Response, token: string) {
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
+    // Never send the session cookie over plain HTTP in production.
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: SESSION_MAX_AGE_MS,
   });
@@ -119,7 +128,9 @@ export function verifyResetToken(token: string): { email: string } | null {
     const [body, sig] = token.split('.');
     if (!body || !sig) return null;
     const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (payload.purpose !== 'password_reset') return null;
     if (Date.now() > payload.exp) return null;

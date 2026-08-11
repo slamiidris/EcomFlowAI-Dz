@@ -111,4 +111,22 @@ router.get("/api/dashboard/summary", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/dashboard/ai-usage — real usage counts for the 4 sidebar AI tools
+// (video scripts, landing pages, assembled LP sessions, total generations).
+router.get("/api/dashboard/ai-usage", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const [videoScripts, landingPages, lpSessions, totalGenerations] = await Promise.all([
+      prisma.generationHistory.count({ where: { userId, type: "script" } }),
+      prisma.generationHistory.count({ where: { userId, type: "landing_page" } }),
+      prisma.lpSession.count({ where: { userId } }),
+      prisma.generationHistory.count({ where: { userId } }),
+    ]);
+    res.json({ videoScripts, landingPages, lpSessions, totalGenerations });
+  } catch (err) {
+    console.error("AI usage summary error:", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+});
+
 export default router;

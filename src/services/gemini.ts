@@ -1,4 +1,6 @@
-// Text generation model — single source of truth for all text AI calls.
+// All Gemini calls are server-proxied (POST /api/ai/generate) so the user's
+// API key never reaches the browser bundle. See getAI() below.
+
 export const MODEL_NAME = "gemini-3-flash-preview";
 // Image generation model — separate model family (Gemini image), intentionally different.
 export const IMAGE_MODEL_NAME = "gemini-2.5-flash-image";
@@ -285,7 +287,7 @@ function safeParseJSON(text: string) {
       r = r.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
         return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
       });
-      r = r.replace(/":\s*"([\s\S]*?)"\s*([,}])/g, (_match, p1, p2) => {
+      r = r.replace(/":\s*"([\s\S]*?)"\s*([,}])/g, (match, p1, p2) => {
         const fixedValue = p1.replace(/(?<!\\)"/g, '\\"');
         return `": "${fixedValue}"${p2}`;
       });
@@ -306,111 +308,92 @@ function safeParseJSON(text: string) {
   return null;
 }
 
-// The Gemini client is now a thin proxy to the server (POST /api/ai/generate).
-// The real API key (GEMINI_API_KEY) lives server-side and is never shipped to the browser.
-async function callServerGemini(request: any) {
-  const res = await fetch('/api/ai/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-
-  if (!res.ok) {
-    let serverError = '';
-    try {
-      serverError = (await res.json()).error || '';
-    } catch (e) {
-      // ignore parse errors, fall through to statusText
-    }
-    const error: any = new Error(`${res.status}: ${serverError || res.statusText}`);
-    error.status = res.status;
-    throw error;
+async function proxyGenerate(params: {
+  model: string;
+  contents: unknown;
+  config?: Record<string, unknown>;
+}): Promise<{ text?: string; candidates?: any[]; usageMetadata?: any }> {
+  let res: Response;
+  try {
+    res = await fetch("/api/ai/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+  } catch {
+    throw new Error("Impossible de joindre le serveur IA. Réessaie.");
   }
-
+  if (!res.ok) {
+    let message = "Erreur IA. Réessaie.";
+    try {
+      const data = await res.json();
+      if (data?.error) message = data.error;
+    } catch { /* keep default message */ }
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
-// Normalizes a chat message (string or array of parts) into an array of parts.
-function normalizeMessage(message: any) {
-  if (typeof message === 'string') return [{ text: message }];
-  if (Array.isArray(message)) return message;
-  return [{ text: String(message ?? '') }];
+/** Server-proxied stand-in for the Gemini SDK chat object. */
+function createProxyChat(
+  model: string,
+  history: any[] = [],
+  config?: Record<string, unknown>,
+) {
+  let running = [...(history || [])];
+  return {
+    async sendMessage({ message }: { message: any }) {
+      const parts = Array.isArray(message) ? message : [{ text: message }];
+      running = [...running, { role: "user", parts }];
+      const res = await proxyGenerate({ model, contents: running, config });
+      const text = res.text || "";
+      running = [...running, { role: "model", parts: [{ text }] }];
+      return res;
+    },
+  };
 }
 
-function getAI() {
+/** Client-side stand-in for the Gemini SDK (server-proxied). */
+export function getAI() {
   return {
     models: {
-      async generateContent(request: any) {
-        return callServerGemini(request);
-      },
+      generateContent: (params: any) => proxyGenerate(params),
     },
     chats: {
-      // Replicates the stateful chat API client-side: history is kept locally and
-      // sent in full on each turn so the server proxy stays stateless.
-      // NOTE: must stay synchronous (matches the SDK), callers assign the result directly.
-      create({ model, history = [], config = {} }: any) {
-        const messages: any[] = [...history];
-        return {
-          async sendMessage({ message }: any) {
-            const userParts = normalizeMessage(message);
-            const contents = [
-              ...messages.map((m: any) => ({
-                role: m.role === 'model' ? 'model' : 'user',
-                parts: Array.isArray(m.parts) ? m.parts : [{ text: m.text ?? '' }],
-              })),
-              { role: 'user', parts: userParts },
-            ];
-            const response = await callServerGemini({ model, contents, config });
-            const text = response.text ?? '';
-            messages.push({ role: 'user', parts: userParts });
-            messages.push({ role: 'model', parts: [{ text }] });
-            return response;
-          },
-        };
-      },
+      create: (opts: any) => createProxyChat(opts.model, opts.history, opts.config),
     },
   };
 }
 
 /**
- * Helper to call Gemini with exponential backoff retry logic for 429 (rate limit) errors.
+ * Calls Gemini through the server proxy, retrying only on server-side quota
+ * (429). Every other failure — including a missing API key (400) — is thrown
+ * immediately so the real reason reaches the user instead of a long silent
+ * backoff.
  */
 export async function callGeminiWithRetry(
   callFn: (ai: ReturnType<typeof getAI>) => Promise<any>,
-  maxRetries = 10,
-  initialDelay = 5000
+  maxRetries = 2,
+  initialDelay = 3000,
 ) {
   let lastError: any = null;
-  
   for (let i = 0; i < maxRetries; i++) {
     try {
       const ai = getAI();
       return await callFn(ai);
     } catch (error: any) {
       lastError = error;
-      const errorString = typeof error === 'string' ? error : (error?.message || JSON.stringify(error) || "");
-      const isRateLimit = 
-        errorString.includes("429") || 
-        errorString.includes("RESOURCE_EXHAUSTED") || 
-        errorString.includes("quota") ||
-        errorString.toLowerCase().includes("exceeded") ||
-        errorString.includes("QUOTA_EXCEEDED") ||
-        error?.status === "RESOURCE_EXHAUSTED" ||
-        errorString.toLowerCase().includes("limit reached");
-      
-      if (isRateLimit && i < maxRetries - 1) {
-        // Use jittered exponential backoff
-        // Base delay grows: 5s, 10s, 20s, 40s...
-        const delay = (initialDelay * Math.pow(2, i)) + (Math.random() * 2000);
-        console.warn(`Gemini rate limit reached (429/Exhausted). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+      if (error?.status === 429 && i < maxRetries - 1) {
+        const delay = initialDelay + Math.random() * 2000;
+        console.warn(`Gemini quota (429). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
-      
       throw error;
     }
   }
-  
   throw lastError;
 }
 
@@ -676,17 +659,19 @@ export async function generateLandingPageCopy(
       FOR HERO SECTION: Emphasize extra-bold typography and maximal color contrast for text overlays.
       \`\`\`
 
-      📐 Rappel composition LP : [Conseils de design pour le format ${aspectRatio}].
-      📦 PRODUIT OBLIGATOIRE — MODE IMAGE_TO_IMAGE : Utilise l'image jointe comme référence PRIMAIRE. Reproduis le produit EXACT intégré naturellement.
-      ⚡ TEXTE INTÉGRÉ :
-         Headline : "[TEXTE]"
-         → Police [Style], taille [Size], contraste [Contrast]
-         → Position : [Position]
-         → Style : [Style]
-         Sous-texte : "[TEXTE]"
-         CTA visible : "[TEXTE]"
-      🚫 Negative : [Éléments à éviter]
-      **Params:** [Dimensions/Style] | --ar ${aspectRatio}
+      📐 Rappel composition LP : Adapte le conseil au format ${aspectRatio}.
+         Ex : "Keep the bottom 20% clear for the CTA button."
+      📦 PRODUIT OBLIGATOIRE — MODE IMAGE_TO_IMAGE : Reproduis le produit EXACT de l'image.
+         Ex : "Use the white/orange 3-in-1 spray brush."
+      ⚡ TEXTE INTÉGRÉ (adapté au produit) :
+         Headline : "[Titre percutant adapté au produit]" — Ex : "راحة حيوانك تبدأ هنا!"
+         → Police [style], taille XL, contraste High
+         → Position : Upper third
+         → Style : Shadow drop
+         Sous-texte : "[Accroche]" — Ex : "مساج، تنظيف، ولمعان في أداة واحدة"
+         CTA visible : "[CTA]" — Ex : "اطلب الآن"
+      🚫 Negative : [Éléments à éviter] — Ex : messy room, sad pets, low light.
+      **Params:** [Style] — Ex : 8k, realistic | --ar ${aspectRatio}
 
       **CTA bouton :** "[Texte CTA]"
       **Contenu marketing :** [Argumentaire complet axé sur les BÉNÉFICES]
@@ -884,7 +869,10 @@ export async function generateProductImage(productName: string, style: string = 
       }
       throw new Error("No image generated");
     });
-  } catch (e) {
+  } catch (e: any) {
+    // A 400 from the proxy is a definitive client-side rejection (e.g. no
+    // Gemini key configured) — surface it instead of silently falling back.
+    if (e?.status === 400) throw e;
     console.warn("Gemini Image generation failed, using fallback:", e);
     // Fallback using loremflickr with relevant keywords
     const keywords = `${productName.replace(/\s+/g, ',')},product,commercial`;
@@ -1130,6 +1118,83 @@ export async function generatePricingStrategy(productName: string, productCost: 
     });
     
     return safeParseJSON(response.text || "{}");
+  });
+}
+
+export async function analyzeProductImage(base64Image: string, mimeType: string) {
+  return callGeminiWithRetry(async (ai) => {
+    const prompt = `
+      En tant qu'expert en branding et marketing e-commerce, analyse cette image de produit en suivant STRICTEMENT cette structure de réponse. 
+      Adapte l'analyse spécifiquement pour le marché algérien (COD/Streetwear/Luxe/Utilité).
+
+      ### 📦 Identification du Produit
+      - **Nom du Produit :** [Nom précis et accrocheur]
+      - **Marque :** [Marque identifiée ou type de branding suggéré]
+      - **Catégorie :** Tu DOIS classer le produit dans l'une de ces 4 catégories : [vêtement | accessoire | gadget technologique | article ménager].
+      - **Type de Produit :** [Détail précis du set ou de l'unité]
+
+      ### 🎨 Influence de la Catégorie
+      Explique brièvement comment la catégorie détectée (vêtement, accessoire, gadget tech, ou article ménager) influence ton choix de styles visuels et de layouts marketing.
+
+      ### 💎 Argumentaire & Cible
+      - **Points de Vente :** 
+        - [Argument marketing n°1]
+        - [Argument marketing n°2]
+        - [Argument marketing n°3]
+        - [Argument marketing n°4]
+        - [Argument marketing n°5]
+      - **Public Cible :** [Description précise démographique et intérêts en Algérie]
+
+      ### 🎨 Identité Visuelle & Couleurs
+      - **Palette de Couleurs :**
+        - **Dominante :** [Nom de la couleur] ([Code HEX])
+        - **Accentuation :** [Nom de la couleur] ([Code HEX])
+
+      ### ⚙️ Spécifications Techniques
+      - **Composition :** [Matières perçues]
+      - **Texture :** [Aspect tactile]
+      - **Design :** [Détails de conception]
+      - **Entretien :** [Conseils d'entretien]
+
+      ### 🌍 Localisation
+      - **Langue du texte suggérée :** 🇩🇿 العربية (Arabe) / Français
+
+      ### 📸 Recommandations de Styles Visuels
+      1. **[Nom du Style 1]** : [Description courte] | *Tags: [X, Y]*
+      2. **[Nom du Style 2]** : [Description courte] | *Tags: [X, Y]*
+      3. **[Nom du Style 3]** : [Description courte] | *Tags: [X, Y]*
+
+      ### 📐 Dispositions de Texte (Marketing Layouts)
+      1. **[Concept 1]** : [Description] | *Impact: [Effet]*
+      2. **[Concept 2]** : [Description] | *Impact: [Effet]*
+      3. **[Concept 3]** : [Description] | *Impact: [Effet]*
+
+      ### 🚀 Plan d'Action Marketing (Stratégie Algérie)
+      - **Positionnement :** [Stratégie de différenciation]
+      - **Offre Irrésistible :** [Promotion recommandée]
+      
+      ### 📱 Idées de Contenu (Posts & Vidéos)
+      - [Idée 1]
+      - [Idée 2]
+      - [Idée 3]
+
+      ### ⚡ Optimisation Page Produit
+      - [Conseil CRO 1]
+      - [Conseil CRO 2]
+
+      Reste extrêmement précis, utilisez un ton d'expert consultant et assure-toi que les codes couleurs sont cohérents avec l'image.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [
+        { text: prompt },
+        { inlineData: { data: base64Image, mimeType } }
+      ],
+      config: { maxOutputTokens: 8192 }
+    });
+
+    return response.text || "Désolé, je n'ai pas pu analyser l'image.";
   });
 }
 

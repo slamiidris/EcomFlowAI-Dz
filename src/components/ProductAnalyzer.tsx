@@ -1434,7 +1434,7 @@ export default function ProductAnalyzer() {
       }
       setMessages(prev => [...prev, { role: 'model', content: result, timestamp: Date.now() }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'model', content: "Erreur lors de la comparaison. Réessayez.", timestamp: Date.now() }]);
+      setMessages(prev => [...prev, { role: 'model', content: (error as any)?.message || "Erreur lors de la comparaison. Réessayez.", timestamp: Date.now() }]);
       } finally {
         setIsComparing(false);
         setIsComparingUrl(false);
@@ -1497,7 +1497,7 @@ export default function ProductAnalyzer() {
       
       const errorMessage = isQuota 
         ? "⚠️ **Quota Gemini épuisé.** L'IA a besoin d'une petite pause ou votre limite journalière est atteinte (Erreur 429). Réessayez dans quelques minutes ou demain."
-        : "Erreur lors de la communication avec l'expert. Vérifie ta connexion.";
+        : err.message || "Erreur lors de la communication avec l'expert. Vérifie ta connexion.";
         
       setMessages(prev => [...prev, { role: 'model', content: errorMessage, timestamp: Date.now() }]);
     } finally {
@@ -1533,7 +1533,7 @@ export default function ProductAnalyzer() {
       
       const errorMessage = isQuota 
         ? "⚠️ **Quota Gemini épuisé** lors de l'analyse de marché. L'IA est surchargée ou vous avez atteint votre limite temporaire (Erreur 429). Réessayez dans un moment."
-        : "Erreur lors de l'analyse de marché. Réessayez.";
+        : err.message || "Erreur lors de l'analyse de marché. Réessayez.";
         
       setMessages(prev => [...prev, { role: 'model', content: errorMessage, timestamp: Date.now() }]);
     } finally {
@@ -1585,7 +1585,7 @@ export default function ProductAnalyzer() {
       
       const errorMessage = isQuota 
         ? "⚠️ **Quota Gemini épuisé** (429). L'IA est surchargée ou vous avez atteint votre limite temporaire. Impossible de générer la stratégie de prix pour le moment."
-        : "Erreur lors de la génération de la stratégie de prix. Réessayez.";
+        : err.message || "Erreur lors de la génération de la stratégie de prix. Réessayez.";
 
       setMessages(prev => [...prev, { role: 'model', content: errorMessage, timestamp: Date.now() }]);
     } finally {
@@ -1645,7 +1645,7 @@ export default function ProductAnalyzer() {
       
       const errorMessage = isQuota 
         ? "⚠️ **Quota Gemini épuisé** (429). L'IA est surchargée ou vous avez atteint votre limite temporaire. Impossible de générer ces assets marketing pour le moment."
-        : "Erreur lors de la génération des suggestions. Réessayez.";
+        : err.message || "Erreur lors de la génération des suggestions. Réessayez.";
 
       setMessages(prev => [...prev, { role: 'model', content: errorMessage, timestamp: Date.now() }]);
     } finally {

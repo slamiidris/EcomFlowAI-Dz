@@ -758,6 +758,51 @@ export const translations: TranslationDictionary = {
     ar: "السوق الجزائري : مباشر",
     en: "DZ Market: Live",
   },
+  dashToolsTitle: {
+    fr: "Tes outils IA",
+    ar: "أدواتك بالذكاء الاصطناعي",
+    en: "Your AI tools",
+  },
+  dashKpiVideoScripts: {
+    fr: "Scripts vidéo",
+    ar: "نصوص الفيديو",
+    en: "Video scripts",
+  },
+  dashKpiVideoSub: {
+    fr: "Pubs vidéo générées",
+    ar: "إعلانات فيديو مولّدة",
+    en: "Video ads generated",
+  },
+  dashKpiLandingPages: {
+    fr: "Landing pages",
+    ar: "صفحات الهبوط",
+    en: "Landing pages",
+  },
+  dashKpiLandingSub: {
+    fr: "Tunnels de vente créés",
+    ar: "مسارات مبيعات تم إنشاؤها",
+    en: "Sales funnels created",
+  },
+  dashKpiLpBuilt: {
+    fr: "LP assemblées",
+    ar: "صفحات هبوط مُجمّعة",
+    en: "LPs assembled",
+  },
+  dashKpiLpSub: {
+    fr: "Constructeur de LP",
+    ar: "منشئ صفحات الهبوط",
+    en: "Landing page builder",
+  },
+  dashKpiTotalGen: {
+    fr: "Générations IA",
+    ar: "توليدات الذكاء الاصطناعي",
+    en: "AI generations",
+  },
+  dashKpiTotalSub: {
+    fr: "Total des créations",
+    ar: "إجمالي الإنشاءات",
+    en: "Total creations",
+  },
   dashKpiConversion: {
     fr: "Taux Conversion",
     ar: "معدل التحويل",
@@ -1337,6 +1382,41 @@ export const translations: TranslationDictionary = {
     fr: "Prenez vos contenus prêts à l'emploi et commencez à vendre.",
     ar: "استخدم محتواك الجاهز وابدأ البيع.",
     en: "Take your ready-to-use assets and start selling.",
+  },
+  lpNavShowcase: {
+    fr: "Réalisations",
+    ar: "أعمالنا",
+    en: "Showcase",
+  },
+  lpShowcaseLabel: {
+    fr: "EXEMPLES DE LANDING PAGES",
+    ar: "أمثلة على صفحات الهبوط",
+    en: "LANDING PAGE EXAMPLES",
+  },
+  lpShowcaseTitleA: {
+    fr: "Des campagnes qui ",
+    ar: "حملات تحقق ",
+    en: "Campaigns That ",
+  },
+  lpShowcaseTitleB: {
+    fr: "convertissent",
+    ar: "المبيعات",
+    en: "Convert",
+  },
+  lpShowcaseDesc: {
+    fr: "Découvrez des exemples de landing pages générées par notre IA pour des produits réels du marché algérien.",
+    ar: "اكتشف أمثلة على صفحات هبوط تم إنشاؤها بالذكاء الاصطناعي لمنتجات حقيقية في السوق الجزائري.",
+    en: "Discover examples of AI-generated landing pages for real products in the Algerian market.",
+  },
+  lpShowcaseCard1Title: {
+    fr: "Landing Page · Tablette Enfants",
+    ar: "صفحة هبوط · جهاز أطفال",
+    en: "Landing Page · Kids Tablet",
+  },
+  lpShowcaseCard2Title: {
+    fr: "Landing Page · Console Gaming",
+    ar: "صفحة هبوط · جهاز ألعاب",
+    en: "Landing Page · Gaming Console",
   },
   lpPriceLabel: {
     fr: "Paiement en DZD · activation manuelle",

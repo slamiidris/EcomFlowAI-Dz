@@ -1,0 +1,16 @@
+# Secrets — never upload local env / OAuth credentials to the deployment.
+# Vercel env vars are configured separately in the project, so these are not
+# needed at build/runtime.
+.env
+.env.*
+!.env.example
+client_secret*.json
+
+# Local-only / generated (rebuilds produce fresh output)
+node_modules
+dist
+data
+screenshots
+.vercel
+*.log
+*.map

@@ -31,6 +31,7 @@ model EmailOtp {
   userId    String   @map("user_id")
   codeHash  String   @map("code_hash")
   reason    String   @default("verification") // verification | login
+  attempts  Int      @default(0) // failed verification counter (lockout)
   expiresAt DateTime @map("expires_at")
   used      Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
@@ -134,6 +135,7 @@ model User {
   planSelectedAt      DateTime? @map("plan_selected_at")
   planActiveFrom      DateTime? @map("plan_active_from")
   planExpiresAt       DateTime? @map("plan_expires_at")
+  planDays            Int?      @map("plan_days")
   paymentProof        String?   @map("payment_proof")
   paymentMethod       String?   @map("payment_method")
   paymentSubmittedAt  DateTime? @map("payment_submitted_at")
@@ -149,4 +151,76 @@ model User {
   userPreferences     UserPreferences?
 
   @@map("users")
+}
+
+model PaymentMethod {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  description  String?
+  emoji        String   @default("💳")
+  // 'email' → "send money to adminEmail then submit proof"
+  // 'bank'  → "bank transfer to the account in `details`"
+  // 'manual'→ generic: `instructions` steps + copyable rows in `details`
+  type         String   @default("manual")
+  instructions Json     @default("[]") // string[] of numbered steps
+  details      Json? // { beneficiary?, iban?, bic?, idNumber?, target?, rows?: [{label,value}] }
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([enabled, sortOrder])
+  @@map("payment_methods")
+}
+
+model Announcement {
+  id        String    @id @default(uuid())
+  title     String
+  message   String
+  emoji     String    @default("📢")
+  kind      String    @default("info") // info | warning | success | promo
+  active    Boolean   @default(true)
+  startsAt  DateTime? @map("starts_at")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([active, startsAt, expiresAt])
+  @@map("announcements")
+}
+
+model HotDeal {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  emoji       String   @default("🔥")
+  badge       String? // e.g. "HOT", "PROMO", "-30%"
+  price       String? // display string, e.g. "1 500 DA"
+  link        String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([active, sortOrder])
+  @@map("hot_deals")
+}
+
+// Singleton platform config — editable plan prices + currency + contact
+// settings. Exactly one row, id = "singleton" (upserted on read if missing).
+model PlatformConfig {
+  id               String   @id @default("singleton")
+  currencyCode     String   @default("DA")
+  currencySymbol   String   @default("DA")
+  currencyPosition String   @default("after") // "before" | "after"
+  monthlyPrice     Int      @default(1500)
+  quarterlyPrice   Int      @default(3500)
+  lifetimePrice    Int      @default(15000)
+  whatsappNumber   String   @default("")
+  adminTelegram    String   @default("")
+  adminEmail       String   @default("")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_config")
 }

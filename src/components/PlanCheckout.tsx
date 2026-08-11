@@ -1,30 +1,13 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Mail, Send, Loader2, BadgeCheck, Crown, CreditCard, Building2, Upload, FileImage, FileText, ArrowRight, ArrowLeft, Copy, CheckCircle2, MessageCircle } from 'lucide-react';
+import { X, Check, Send, Loader2, BadgeCheck, CreditCard, Upload, FileImage, FileText, ArrowRight, ArrowLeft, Copy, CheckCircle2, MessageCircle, Hourglass } from 'lucide-react';
 import { useAuth, PlanId } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { useCountdown } from '../lib/countdown';
 import { useToast } from '../context/ToastContext';
+import { contentApi, type PaymentMethod } from '../services/admin';
+import { PLAN_EMOJI, buildPlans, usePricing } from '../lib/pricing';
 
-export interface PlanOption {
-  id: PlanId;
-  label: string;
-  tagline: string;
-  price: string;
-  note: string;
-  per: string;
-  popular?: boolean;
-  accent?: string;
-}
-
-export const PLANS: PlanOption[] = [
-  { id: 'monthly', label: '1 Mois', tagline: 'Pour tester', price: '1 500', note: 'DA / mois', per: '30 jours d\'accès', accent: 'from-dz-emerald/25 to-transparent border-dz-emerald/40' },
-  { id: 'quarterly', label: '3 Mois', tagline: 'Le plus choisi', price: '3 500', note: 'DA / 3 mois', per: '90 jours d\'accès', popular: true, accent: 'from-dz-gold/25 to-transparent border-dz-gold/50' },
-  { id: 'lifetime', label: 'À Vie', tagline: 'Paiement unique', price: '15 000', note: 'DA une fois', per: 'Accès illimité à vie', accent: 'from-dz-dinar/25 to-transparent border-dz-dinar/50' },
-];
-
-const PLAN_EMOJI: Record<PlanId, string> = { monthly: '⚡', quarterly: '🔥', lifetime: '👑' };
-
-type PaymentMethod = 'redotpay' | 'baridimob' | null;
 type Step = 'plan' | 'method' | 'payment' | 'done';
 
 interface PlanCheckoutProps {
@@ -33,56 +16,73 @@ interface PlanCheckoutProps {
   onClose: () => void;
 }
 
-// Baridimob bank info
-const BARIDIMOB_INFO = {
-  iban: 'DZ23 0079 9999 9091 2345 6789 01',
-  bic: 'BARBDZDZ',
-  bank: 'Barid Bank',
-  name: 'DZAds AI SARL',
-  idNumber: '1999999999999999',
-};
-
 export default function PlanCheckout({ open, initialPlan = null, onClose }: PlanCheckoutProps) {
   const toast = useToast();
   const { user, selectPlan } = useAuth();
+  // Live countdown for an active subscription (ticks every second).
+  const planCountdown = useCountdown(user?.planExpiresAt ? new Date(user.planExpiresAt).getTime() : null);
   const [step, setStep] = useState<Step>('plan');
   const [selected, setSelected] = useState<PlanId | null>(initialPlan);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [methodsLoading, setMethodsLoading] = useState(true);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState('admin@dzads.ai');
   const [adminTelegram, setAdminTelegram] = useState('DzAdsAdmin');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Prices + currency come from the server (admin-editable PlatformConfig).
+  const pricing = usePricing();
+  const plans = useMemo(() => buildPlans(pricing), [pricing]);
 
   useEffect(() => {
     if (open) {
       setSelected(initialPlan);
       setStep(initialPlan ? 'method' : 'plan');
-      setPaymentMethod(null);
+      setSelectedMethod(null);
       setProofFile(null);
       setProofPreview(null);
       setCopied(null);
+      // Load admin contacts
       fetch('/api/config')
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d) {
             setAdminEmail(d.adminEmail);
             setAdminTelegram(d.adminTelegram);
+            setWhatsappNumber(d.whatsappNumber || '');
           }
         })
         .catch(() => {});
+      // Load DB-backed payment methods
+      setMethodsLoading(true);
+      contentApi
+        .paymentMethods()
+        .then((ms) => setPaymentMethods(ms))
+        .catch(() => setPaymentMethods([]))
+        .finally(() => setMethodsLoading(false));
     }
   }, [open, initialPlan]);
 
-  const plan = PLANS.find((p) => p.id === selected) || null;
+  const plan = plans.find((p) => p.id === selected) || null;
+  const methodName = selectedMethod?.name || 'Paiement';
+  const methodTarget = selectedMethod?.details?.target || adminEmail;
+
+  const fillInstructions = (stepText: string) =>
+    stepText
+      .replace('{amount}', plan?.price || '')
+      .replace('{target}', methodTarget)
+      .replace('{plan}', plan?.label || '');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Fichier trop volumineux (max 10 Mo).');
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Fichier trop volumineux (max 5 Mo).');
       return;
     }
     setProofFile(file);
@@ -96,27 +96,36 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
   };
 
   const handleSubmitPayment = async () => {
-    if (!selected || !paymentMethod) return;
+    if (!selected || !selectedMethod) return;
+    // Proof is mandatory — without it the admin has nothing to verify.
+    if (!proofFile) {
+      toast.error('Veuillez joindre une preuve de paiement.');
+      return;
+    }
     setSubmitting(true);
     try {
-      // Convert file to base64 if present
-      let proofBase64: string | null = null;
-      if (proofFile) {
-        proofBase64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (ev) => resolve(ev.target?.result as string);
-          reader.readAsDataURL(proofFile);
-        });
-      }
+      const proofBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.readAsDataURL(proofFile);
+      });
 
       await selectPlan(selected);
 
-      // Store payment proof via API
-      await fetch('/api/user/payment-proof', {
+      // Store payment proof via API — surface any failure so the user can retry.
+      const res = await fetch('/api/user/payment-proof', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proof: proofBase64, method: paymentMethod }),
+        body: JSON.stringify({ proof: proofBase64, method: selectedMethod.code }),
       });
+      if (!res.ok) {
+        let message = "Impossible d'envoyer la preuve. Réessaie.";
+        try {
+          const data = await res.json();
+          if (data?.error) message = data.error;
+        } catch { /* ignore */ }
+        throw new Error(message);
+      }
 
       setStep('done');
       toast.success('Paiement enregistré — en attente de vérification. ✅');
@@ -135,7 +144,10 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
 
   // Active subscription
   if (user?.planStatus === 'active' && user?.plan) {
-    const active = PLANS.find((p) => p.id === user.plan);
+    const active = plans.find((p) => p.id === user.plan);
+    // Admin-granted custom plans aren't in the static plans list — label them from planDays.
+    const planLabel = active?.label || (user.planDays ? `${user.planDays} jours` : 'Plan personnalisé');
+    const planEmoji = active ? PLAN_EMOJI[user.plan] : '🎟️';
     return (
       <AnimatePresence>
         {open && (
@@ -163,14 +175,19 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
               <p className="text-white/50 text-sm mb-4">Votre abonnement est en cours.</p>
               <div className="surface-card p-4 border-dz-emerald/30">
                 <div className="flex items-center justify-center gap-2 font-display font-bold text-lg">
-                  <span>{PLAN_EMOJI[user.plan]}</span>
-                  <span className="text-dz-emerald">{active?.label}</span>
+                  <span>{planEmoji}</span>
+                  <span className="text-dz-emerald">{planLabel}</span>
                 </div>
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mt-1 font-mono">
                   {user.planExpiresAt
                     ? `Expire le ${new Date(user.planExpiresAt).toLocaleDateString('fr-FR')}`
                     : 'Accès à vie'}
                 </p>
+                {user.planExpiresAt && !planCountdown.expired && (
+                  <p className="font-mono text-lg font-bold text-dz-emerald tabular-nums mt-2">
+                    {planCountdown.days}j {String(planCountdown.hours).padStart(2, '0')}h {String(planCountdown.minutes).padStart(2, '0')}min {String(planCountdown.seconds).padStart(2, '0')}s
+                  </p>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -230,7 +247,7 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
                     <p className="text-white/45 text-sm mb-5">Sélectionne l'offre qui te convient.</p>
 
                     <div className="grid gap-3 sm:grid-cols-3 mb-5">
-                      {PLANS.map((p) => {
+                      {plans.map((p) => {
                         const isSel = selected === p.id;
                         return (
                           <button
@@ -252,7 +269,7 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
                             <p className="text-[10px] font-mono uppercase tracking-widest text-white/40">{p.tagline}</p>
                             <p className="font-display text-lg font-bold mt-1">{PLAN_EMOJI[p.id]} {p.label}</p>
                             <p className="font-display font-bold text-xl text-dz-dinar mt-1.5">
-                              {p.price} <span className="text-[10px] text-white/40 font-sans">DA</span>
+                              {p.price}
                             </p>
                             <div className="flex items-center gap-1.5 mt-2">
                               <span className={cn('w-3.5 h-3.5 rounded-full border flex items-center justify-center', isSel ? 'bg-dz-emerald border-dz-emerald' : 'border-white/30')}>
@@ -286,139 +303,118 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
                       <h3 className="font-display text-xl font-bold">Mode de paiement</h3>
                     </div>
                     <p className="text-white/45 text-sm mb-5 ml-7">
-                      Plan <span className="text-dz-dinar font-semibold">{plan?.label}</span> — {plan?.price} DA
+                      Plan <span className="text-dz-dinar font-semibold">{plan?.label}</span> — {plan?.price}
                     </p>
 
-                    <div className="space-y-3 mb-5">
-                      {/* RedotPay */}
-                      <button
-                        type="button"
-                        onClick={() => { setPaymentMethod('redotpay'); setStep('payment'); }}
-                        className={cn(
-                          'w-full flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer text-left',
-                          paymentMethod === 'redotpay'
-                            ? 'bg-dz-emerald/5 border-dz-emerald/40'
-                            : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04]'
-                        )}
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-dz-emerald/10 border border-dz-emerald/20 flex items-center justify-center shrink-0">
-                          <CreditCard size={22} className="text-dz-emerald" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-display font-semibold text-[15px] text-white">RedotPay</p>
-                          <p className="text-[12px] text-white/40 mt-0.5">Paiement en ligne rapide et sécurisé</p>
-                        </div>
-                        <ArrowRight size={16} className="text-white/20" />
-                      </button>
-
-                      {/* Baridimob */}
-                      <button
-                        type="button"
-                        onClick={() => { setPaymentMethod('baridimob'); setStep('payment'); }}
-                        className={cn(
-                          'w-full flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer text-left',
-                          paymentMethod === 'baridimob'
-                            ? 'bg-dz-emerald/5 border-dz-emerald/40'
-                            : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04]'
-                        )}
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-dz-gold/10 border border-dz-gold/20 flex items-center justify-center shrink-0">
-                          <Building2 size={22} className="text-dz-gold" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-display font-semibold text-[15px] text-white">BaridiMob</p>
-                          <p className="text-[12px] text-white/40 mt-0.5">Virement bancaire via BaridiMob / CCP</p>
-                        </div>
-                        <ArrowRight size={16} className="text-white/20" />
-                      </button>
-                    </div>
+                    {methodsLoading ? (
+                      <div className="py-10 text-center"><Loader2 size={22} className="mx-auto text-white/25 animate-spin" /></div>
+                    ) : paymentMethods.length === 0 ? (
+                      <div className="py-10 text-center">
+                        <CreditCard size={22} className="mx-auto text-white/20 mb-2" />
+                        <p className="text-[13px] text-white/40">Aucune méthode de paiement disponible pour le moment.</p>
+                        <p className="text-[11px] text-white/25 mt-1">Contacte-nous sur {adminEmail} pour finaliser.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 mb-5">
+                        {paymentMethods.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => { setSelectedMethod(m); setStep('payment'); }}
+                            className={cn(
+                              'w-full flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer text-left',
+                              selectedMethod?.id === m.id
+                                ? 'bg-dz-emerald/5 border-dz-emerald/40'
+                                : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04]'
+                            )}
+                          >
+                            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center text-2xl shrink-0">
+                              {m.emoji || '💳'}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-display font-semibold text-[15px] text-white">{m.name}</p>
+                              <p className="text-[12px] text-white/40 mt-0.5">{m.description}</p>
+                            </div>
+                            <ArrowRight size={16} className="text-white/20" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
                 {/* STEP 3: Payment + Upload Proof */}
-                {step === 'payment' && (
+                {step === 'payment' && selectedMethod && (
                   <motion.div key="payment" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                     <div className="flex items-center gap-2 mb-1">
                       <button onClick={() => setStep('method')} className="p-1 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors cursor-pointer">
                         <ArrowLeft size={16} />
                       </button>
                       <h3 className="font-display text-xl font-bold">
-                        {paymentMethod === 'redotpay' ? 'Paiement RedotPay' : 'Virement BaridiMob'}
+                        {selectedMethod.emoji} {methodName}
                       </h3>
                     </div>
                     <p className="text-white/45 text-sm mb-5 ml-7">
-                      Plan <span className="text-dz-dinar font-semibold">{plan?.label}</span> — <span className="text-dz-dinar font-bold">{plan?.price} DA</span>
+                      Plan <span className="text-dz-dinar font-semibold">{plan?.label}</span> — <span className="text-dz-dinar font-bold">{plan?.price}</span>
                     </p>
 
-                    {paymentMethod === 'redotpay' ? (
-                      /* RedotPay Instructions */
-                      <div className="space-y-4 mb-5">
-                        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
-                          <p className="text-[11px] font-mono uppercase tracking-wider text-white/35 mb-3">Instructions de paiement</p>
-                          <ol className="space-y-2 text-[13px] text-white/60 list-decimal list-inside">
-                            <li>Ouvre l'application <span className="text-white font-semibold">RedotPay</span></li>
-                            <li>Choisis <span className="text-white font-semibold">Envoyer</span> ou <span className="text-white font-semibold">Pay</span></li>
-                            <li>Envoie <span className="text-dz-dinar font-bold">{plan?.price} DA</span> à :</li>
-                          </ol>
-                          <div className="mt-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-between">
-                            <span className="font-mono text-sm text-white">{adminEmail}</span>
-                            <button onClick={() => handleCopy(adminEmail, 'email')} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
-                              {copied === 'email' ? <CheckCircle2 size={14} className="text-dz-emerald" /> : <Copy size={14} className="text-white/30" />}
-                            </button>
-                          </div>
-                          <p className="text-[11px] text-white/30 mt-2">En objet : <span className="text-white/50">Ton email + "Plan {plan?.label}"</span></p>
-                        </div>
+                    {/* Generic instructions */}
+                    {selectedMethod.instructions?.length > 0 && (
+                      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+                        <p className="text-[11px] font-mono uppercase tracking-wider text-white/35 mb-3">Instructions de paiement</p>
+                        <ol className="space-y-2 text-[13px] text-white/60 list-decimal list-inside">
+                          {selectedMethod.instructions.map((s, i) => (
+                            <li key={i}>{fillInstructions(s)}</li>
+                          ))}
+                        </ol>
                       </div>
-                    ) : (
-                      /* Baridimob Instructions */
-                      <div className="space-y-4 mb-5">
-                        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
-                          <p className="text-[11px] font-mono uppercase tracking-wider text-white/35 mb-3">Informations bancaires</p>
+                    )}
 
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                    {/* Bank details block */}
+                    {selectedMethod.type === 'bank' && (
+                      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+                        <p className="text-[11px] font-mono uppercase tracking-wider text-white/35 mb-3">Informations bancaires</p>
+                        <div className="space-y-3">
+                          {[
+                            { label: 'Bénéficiaire', value: selectedMethod.details?.beneficiary, key: 'beneficiary' },
+                            { label: 'IBAN', value: selectedMethod.details?.iban, key: 'iban' },
+                            { label: 'BIC/SWIFT', value: selectedMethod.details?.bic, key: 'bic' },
+                            { label: 'N° Identifiant', value: selectedMethod.details?.idNumber, key: 'idNumber' },
+                          ].filter(r => r.value).map(r => (
+                            <div key={r.key} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
                               <div>
-                                <p className="text-[10px] text-white/30 uppercase">Bénéficiaire</p>
-                                <p className="text-sm text-white font-semibold mt-0.5">{BARIDIMOB_INFO.name}</p>
+                                <p className="text-[10px] text-white/30 uppercase">{r.label}</p>
+                                <p className={cn('text-sm text-white mt-0.5', r.key === 'iban' && 'font-mono')}>{r.value}</p>
                               </div>
-                              <button onClick={() => handleCopy(BARIDIMOB_INFO.name, 'name')} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
-                                {copied === 'name' ? <CheckCircle2 size={14} className="text-dz-emerald" /> : <Copy size={14} className="text-white/30" />}
+                              <button onClick={() => handleCopy(r.value, r.key)} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
+                                {copied === r.key ? <CheckCircle2 size={14} className="text-dz-emerald" /> : <Copy size={14} className="text-white/30" />}
                               </button>
                             </div>
-
-                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                              <div>
-                                <p className="text-[10px] text-white/30 uppercase">IBAN</p>
-                                <p className="text-sm text-white font-mono mt-0.5">{BARIDIMOB_INFO.iban}</p>
-                              </div>
-                              <button onClick={() => handleCopy(BARIDIMOB_INFO.iban, 'iban')} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
-                                {copied === 'iban' ? <CheckCircle2 size={14} className="text-dz-emerald" /> : <Copy size={14} className="text-white/30" />}
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                                <p className="text-[10px] text-white/30 uppercase">BIC/SWIFT</p>
-                                <p className="text-sm text-white font-mono mt-0.5">{BARIDIMOB_INFO.bic}</p>
-                              </div>
-                              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                                <p className="text-[10px] text-white/30 uppercase">N° Identifiant</p>
-                                <p className="text-sm text-white font-mono mt-0.5">{BARIDIMOB_INFO.idNumber}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                              <div>
-                                <p className="text-[10px] text-white/30 uppercase">Montant</p>
-                                <p className="text-lg text-dz-dinar font-bold font-display mt-0.5">{plan?.price} DA</p>
-                              </div>
+                          ))}
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                            <div>
+                              <p className="text-[10px] text-white/30 uppercase">Montant</p>
+                              <p className="text-lg text-dz-dinar font-bold font-display mt-0.5">{plan?.price}</p>
                             </div>
                           </div>
-
-                          <p className="text-[11px] text-white/30 mt-3">
-                            <span className="text-white/50">Référence :</span> Envoie ton email dans le motif du virement.
-                          </p>
                         </div>
+                        <p className="text-[11px] text-white/30 mt-3">
+                          <span className="text-white/50">Référence :</span> Envoie ton email dans le motif du virement.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Email target block */}
+                    {selectedMethod.type === 'email' && (
+                      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+                        <p className="text-[11px] font-mono uppercase tracking-wider text-white/35 mb-3">Envoie le montant à :</p>
+                        <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-between">
+                          <span className="font-mono text-sm text-white">{methodTarget}</span>
+                          <button onClick={() => handleCopy(methodTarget, 'target')} className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
+                            {copied === 'target' ? <CheckCircle2 size={14} className="text-dz-emerald" /> : <Copy size={14} className="text-white/30" />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-white/30 mt-2">En objet : <span className="text-white/50">Ton email + "Plan {plan?.label}"</span></p>
                       </div>
                     )}
 
@@ -462,7 +458,7 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
                           <p className="text-[13px] text-white/45 group-hover:text-white/60 transition-colors">
                             Clique pour uploader ta preuve
                           </p>
-                          <p className="text-[11px] text-white/25">PDF ou image · max 10 Mo</p>
+                          <p className="text-[11px] text-white/25">PDF ou image · max 5 Mo</p>
                         </button>
                       )}
                       <input
@@ -486,75 +482,48 @@ export default function PlanCheckout({ open, initialPlan = null, onClose }: Plan
                   </motion.div>
                 )}
 
-                {/* STEP 4: Done — Send proof via WhatsApp / Gmail / Telegram */}
+                {/* STEP 4: Done — payment recorded, waiting for admin approval */}
                 {step === 'done' && (
                   <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6">
                     <div className="mx-auto w-14 h-14 rounded-2xl bg-dz-gold/15 border border-dz-gold/40 flex items-center justify-center mb-4">
-                      <Crown size={26} className="text-dz-gold" />
+                      <Hourglass size={26} className="text-dz-gold" />
                     </div>
-                    <h3 className="font-display text-xl font-bold mb-2">Merci ! 🎉</h3>
-                    <p className="text-white/55 text-sm leading-relaxed max-w-sm mx-auto mb-6">
-                      Ton paiement est <span className="text-dz-gold font-semibold">en attente de vérification</span>.
-                      Envoie ta preuve via l'un de ces canaux :
+                    <h3 className="font-display text-xl font-bold mb-2">En attente d'approbation ⏳</h3>
+                    <p className="text-white/55 text-sm leading-relaxed max-w-sm mx-auto mb-3">
+                      Ta preuve de paiement a bien été reçue. Un{' '}
+                      <span className="text-dz-gold font-semibold">administrateur</span> va vérifier ton
+                      paiement puis activer ton plan.
+                    </p>
+                    <p className="text-white/35 text-[12px] leading-relaxed max-w-xs mx-auto mb-6">
+                      Ton accès sera débloqué automatiquement dès l'approbation. Merci de patienter.
                     </p>
 
-                    {/* 3 channels to send proof */}
-                    <div className="space-y-2.5">
-                      {/* WhatsApp */}
+                    {/* Contact admin if needed */}
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-2">
+                      Une question ?
+                    </p>
+                    <div className="flex items-center justify-center gap-2.5">
+                      {whatsappNumber && (
+                        <a
+                          href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Bonjour, je viens de payer le plan ${plan?.label} (${plan?.price}) via ${methodName}.\n\nMon compte : ${user?.email || ''}\nJ'attends la vérification de mon paiement.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-lg bg-[#25D366]/10 border border-[#25D366]/30 px-3 py-1.5 text-[11px] font-semibold text-[#25D366] hover:bg-[#25D366]/20 transition-colors"
+                        >
+                          <MessageCircle size={12} /> WhatsApp
+                        </a>
+                      )}
                       <a
-                        href={`https://wa.me/213555000000?text=${encodeURIComponent(`Bonjour, je viens de payer le plan ${plan?.label} (${plan?.price} DA) via ${paymentMethod === 'redotpay' ? 'RedotPay' : 'BaridiMob'}.\n\nMon compte : ${user?.email || ''}\nMerci de confirmer mon accès.`)}`}
+                        href={`https://t.me/${adminTelegram}?text=${encodeURIComponent(`Bonjour, je viens de payer le plan ${plan?.label} (${plan?.price}) via ${methodName}.\n\nMon compte : ${user?.email || ''}\nJ'attends la vérification de mon paiement.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl bg-[#25D366]/10 border border-[#25D366]/30 px-4 py-3 text-left hover:bg-[#25D366]/20 transition-colors"
+                        className="inline-flex items-center gap-2 rounded-lg bg-[#0088CC]/10 border border-[#0088CC]/30 px-3 py-1.5 text-[11px] font-semibold text-[#0088CC] hover:bg-[#0088CC]/20 transition-colors"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 flex items-center justify-center shrink-0">
-                          <MessageCircle size={18} className="text-[#25D366]" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[13px] font-semibold text-white">WhatsApp</p>
-                          <p className="text-[11px] text-white/40">Envoie la preuve directement</p>
-                        </div>
-                        <ArrowRight size={14} className="text-white/20" />
-                      </a>
-
-                      {/* Gmail */}
-                      <a
-                        href={`mailto:${adminEmail}?subject=${encodeURIComponent(`Preuve paiement — Plan ${plan?.label}`)}&body=${encodeURIComponent(`Bonjour,\n\nJe viens de payer le plan ${plan?.label} (${plan?.price} DA) via ${paymentMethod === 'redotpay' ? 'RedotPay' : 'BaridiMob'}.\n\nMon compte : ${user?.email || ''}\nMerci de confirmer mon accès.`)}`}
-                        className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-3 text-left hover:bg-white/[0.06] transition-colors"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-[#EA4335]/10 flex items-center justify-center shrink-0">
-                          <Mail size={18} className="text-[#EA4335]" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[13px] font-semibold text-white">Gmail</p>
-                          <p className="text-[11px] text-white/40">{adminEmail}</p>
-                        </div>
-                        <ArrowRight size={14} className="text-white/20" />
-                      </a>
-
-                      {/* Telegram */}
-                      <a
-                        href={`https://t.me/${adminTelegram}?text=${encodeURIComponent(`Bonjour, je viens de payer le plan ${plan?.label} (${plan?.price} DA) via ${paymentMethod === 'redotpay' ? 'RedotPay' : 'BaridiMob'}.\n\nMon compte : ${user?.email || ''}\nMerci de confirmer mon accès.`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/30 px-4 py-3 text-left hover:bg-[#0088CC]/20 transition-colors"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-[#0088CC]/15 flex items-center justify-center shrink-0">
-                          <Send size={18} className="text-[#0088CC]" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[13px] font-semibold text-white">Telegram</p>
-                          <p className="text-[11px] text-white/40">@{adminTelegram}</p>
-                        </div>
-                        <ArrowRight size={14} className="text-white/20" />
+                        <Send size={12} /> Telegram
                       </a>
                     </div>
 
-                    <p className="text-[10px] text-white/25 mt-4 font-mono">
-                      Joins la preuve de paiement (photo / PDF) dans ton message.
-                    </p>
-
-                    <button onClick={onClose} className="mt-4 text-[12px] text-white/30 hover:text-white/50 transition-colors cursor-pointer">
+                    <button onClick={onClose} className="mt-5 text-[12px] text-white/30 hover:text-white/50 transition-colors cursor-pointer">
                       Fermer
                     </button>
                   </motion.div>

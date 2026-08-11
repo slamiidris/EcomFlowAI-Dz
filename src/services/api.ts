@@ -174,8 +174,17 @@ export interface DashboardSummary {
   }>;
 }
 
+/** Real usage counts for the sidebar AI tools (video / landing / assembler). */
+export interface AiUsageSummary {
+  videoScripts: number;
+  landingPages: number;
+  lpSessions: number;
+  totalGenerations: number;
+}
+
 export const dashboardApi = {
   summary: () => api<DashboardSummary>("/api/dashboard/summary"),
+  aiUsage: () => api<AiUsageSummary>("/api/dashboard/ai-usage"),
 };
 
 // ---------------------------------------------------------------------------
@@ -224,5 +233,13 @@ export const chatSessionsApi = {
 // Config (public — admin contacts)
 // ---------------------------------------------------------------------------
 export const configApi = {
-  get: () => api<{ adminEmail: string; adminTelegram: string }>("/api/config"),
+  get: () => api<{ adminEmail: string; adminTelegram: string; whatsappNumber: string }>("/api/config"),
+};
+
+// ---------------------------------------------------------------------------
+// Contact form
+// ---------------------------------------------------------------------------
+export const contactApi = {
+  send: (body: { name: string; email: string; subject: string; message: string }) =>
+    api<{ ok: boolean }>("/api/contact", { method: "POST", body: JSON.stringify(body) }),
 };

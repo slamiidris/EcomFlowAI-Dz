@@ -1,13 +1,15 @@
-import { Fragment } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, ArrowRight, ArrowLeft, Lock, LayoutTemplate, Clapperboard, Palette, Sparkles } from 'lucide-react';
+import { Zap, ArrowRight, ArrowLeft, Lock, LayoutTemplate, Clapperboard, Palette, Sparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PlanId } from '../context/AuthContext';
-import { PLANS } from './PlanCheckout';
+import { PLAN_EMOJI, buildPlans, usePricing } from '../lib/pricing';
 import { useLanguage, Language } from '../context/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
 import { cn } from '../lib/utils';
 import ecomflowLogo from '../images/EcomFlow.png';
+import exemple1 from '../images/exemple1.webp';
+import exemple2 from '../images/exemple2.webp';
 
 // Market-pulse ticker content — capability phrases, no made-up stats or products.
 const TICKERS: Record<Language, string[]> = {
@@ -77,11 +79,13 @@ const STEPS = [
   { titleKey: 'lpStep5Title', descKey: 'lpStep5Desc' },
 ];
 
-const PLAN_EMOJI: Record<PlanId, string> = { monthly: '⚡', quarterly: '🔥', lifetime: '👑' };
-
 export default function LandingPage() {
   const navigate = useNavigate();
   const { t, language, isRTL } = useLanguage();
+
+  // Prices + currency come from the server (admin-editable PlatformConfig).
+  const pricing = usePricing();
+  const plans = useMemo(() => buildPlans(pricing), [pricing]);
 
   // Arabic typography: swap display/mono fonts for the Arabic typeface, drop latin tracking.
   const display = language === 'ar' ? 'font-arabic' : 'font-display';
@@ -102,6 +106,12 @@ export default function LandingPage() {
   const pipelineSteps = PIPELINE[language];
   const activityItems = ACTIVITY[language];
 
+  const showcaseItems = [
+    { src: exemple2, titleKey: 'lpShowcaseCard1Title' as const },
+    { src: exemple1, titleKey: 'lpShowcaseCard2Title' as const },
+  ];
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
+
   return (
     <div className={cn('min-h-screen bg-dz-green text-white overflow-x-hidden', language === 'ar' && 'font-arabic')}>
       {/* NAV — Linear/Vercel-inspired clean navbar */}
@@ -120,6 +130,7 @@ export default function LandingPage() {
             {[
               { label: t('lpNavFeatures'), href: '#features' },
               { label: t('lpNavHow'), href: '#how-it-works' },
+              { label: t('lpNavShowcase'), href: '#showcase' },
               { label: t('lpNavPricing'), href: '#pricing' },
             ].map((link) => (
               <a
@@ -444,6 +455,82 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* SHOWCASE / EXAMPLES */}
+      <section id="showcase" className="py-24 sm:py-32 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-14">
+          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>
+            {t('lpShowcaseLabel')}
+          </p>
+          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
+            {t('lpShowcaseTitleA')}<span className="text-dz-emerald">{t('lpShowcaseTitleB')}</span>
+          </h2>
+          <p className="mt-3 text-white/45 text-sm max-w-xl mx-auto leading-relaxed">
+            {t('lpShowcaseDesc')}
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          {showcaseItems.map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4, delay: i * 0.12 }}
+              className="surface-card p-3 overflow-hidden group cursor-pointer"
+              onClick={() => setPreviewIdx(i)}
+            >
+              <div className="relative rounded-xl overflow-hidden">
+                <img
+                  src={item.src}
+                  alt={t(item.titleKey)}
+                  loading="lazy"
+                  className="w-full h-[480px] object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
+                />
+                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+                <p className={cn('absolute bottom-3 left-4 right-4 text-[13px] font-semibold text-white drop-shadow-lg', display)}>
+                  {t(item.titleKey)}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* SHOWCASE PREVIEW MODAL */}
+      {previewIdx !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+          onClick={() => setPreviewIdx(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full max-w-4xl max-h-[90vh] bg-dz-card rounded-2xl border border-white/10 overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
+              <p className={cn('text-sm font-semibold text-white', display)}>
+                {t(showcaseItems[previewIdx].titleKey)}
+              </p>
+              <button
+                onClick={() => setPreviewIdx(null)}
+                className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <img
+                src={showcaseItems[previewIdx].src}
+                alt={t(showcaseItems[previewIdx].titleKey)}
+                className="w-full"
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* PRICING */}
       <section id="pricing" className="py-24 sm:py-32 max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-14">
@@ -455,7 +542,7 @@ export default function LandingPage() {
         </div>
 
         <div className="grid gap-5 md:grid-cols-3 items-stretch">
-          {PLANS.map((p) => (
+          {plans.map((p) => (
             <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 20 }}

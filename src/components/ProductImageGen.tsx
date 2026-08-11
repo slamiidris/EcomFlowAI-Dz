@@ -141,7 +141,7 @@ export default function ProductImageGen() {
       if (isQuota) {
         setError("Quota Gemini épuisé. L'IA a besoin d'une pause ou votre limite est atteinte (429). Réessayez dans quelques minutes.");
       } else {
-        setError("Erreur lors de la génération de l'image. Veuillez vérifier votre connexion.");
+        setError(err.message || "Erreur lors de la génération de l'image. Veuillez vérifier votre connexion.");
       }
     } finally {
       setIsLoading(false);

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { preferencesApi, authApi, OtpChallenge } from '../services/api';
 
-export type PlanId = 'monthly' | 'quarterly' | 'lifetime';
+export type PlanId = 'monthly' | 'quarterly' | 'lifetime' | 'custom';
 
 export interface AuthUser {
   id: string;
@@ -11,10 +11,13 @@ export interface AuthUser {
   isAdmin?: boolean;
   plan: PlanId | null;
   planStatus: 'pending' | 'active' | null;
-  planSelectedAt?: number;
-  planActiveFrom?: number;
-  planExpiresAt?: number | null;
-  createdAt: number;
+  /** Prisma DateTime serialized as an ISO string over the wire. */
+  planSelectedAt?: string | null;
+  planActiveFrom?: string | null;
+  planExpiresAt?: string | null;
+  /** Granted duration in days (custom/admin grants); null = lifetime. */
+  planDays?: number | null;
+  createdAt: string;
 }
 
 interface AuthContextValue {

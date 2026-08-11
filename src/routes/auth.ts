@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
+import { createRateLimiter } from "../lib/rateLimit";
 import { hashPassword, verifyPassword } from "../lib/password";
-import { sendOtpEmail } from "../lib/email";
+import { sendOtpEmail, sendContactEmail } from "../lib/email";
 import { issueOtp, verifyOtpCode, OtpRateLimitedError } from "../lib/otp";
 import {
   clearSessionCookie,
@@ -30,6 +31,34 @@ export const ADMIN_TELEGRAM = process.env.ADMIN_TELEGRAM || "DzAdsAdmin";
 
 const STATE_COOKIE = "dzads_oauth_state";
 const STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+
+// ---- Rate limiters (brute-force protection) --------------------------------
+const ipKey = (req: express.Request) =>
+  req.ip || req.socket?.remoteAddress || "unknown";
+const authLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyFn: ipKey,
+  message: "Trop de tentatives. Réessaie dans 15 minutes.",
+});
+const registerLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyFn: ipKey,
+  message: "Trop de comptes créés depuis cette adresse. Réessaie plus tard.",
+});
+const otpVerifyLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyFn: (req) => `${ipKey(req)}|${String(req.body?.email || "").toLowerCase()}`,
+  message: "Trop de codes essayés. Réessaie dans 15 minutes.",
+});
+const resendLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyFn: ipKey,
+  message: "Trop de demandes de code. Réessaie dans une minute.",
+});
 
 export function getGoogleConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -99,6 +128,11 @@ async function upsertUser(profile: { email: string; name: string; avatar?: strin
 router.get("/api/auth/google", async (req, res) => {
   try {
     if (!getGoogleConfigured()) {
+      // Dev-only mock: never auto-login in production, where anyone could
+      // claim the demo account or bypass Google verification.
+      if (process.env.NODE_ENV === "production") {
+        return res.status(503).send("Authentification Google non configurée.");
+      }
       const user = await upsertUser({ email: "demo@dzads.ai", name: "Ahmed (Demo)" });
       const token = signSession({
         sub: user.id,
@@ -168,7 +202,7 @@ function publicUser<T extends { passwordHash?: string | null }>(user: T) {
 
 // POST /api/auth/register — name + email + password. Creates the account and
 // sends a verification OTP to the email. The account only activates on verify.
-router.post("/api/auth/register", async (req, res) => {
+router.post("/api/auth/register", registerLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
     const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -190,9 +224,15 @@ router.post("/api/auth/register", async (req, res) => {
       where: { email: normalizedEmail },
     });
     if (existing && existing.emailVerifiedAt) {
-      return res
-        .status(409)
-        .json({ error: "Un compte existe déjà avec cet email. Connecte-toi." });
+      // Enumeration-safe: same response as a fresh signup, but nothing is
+      // created or sent. The user will just log in instead.
+      return res.status(201).json({
+        ok: true,
+        email: normalizedEmail,
+        mode: "verification",
+        dev: false,
+        expiresInSec: 600,
+      });
     }
 
     // Create the account, or refresh an unverified account re-registering.
@@ -238,7 +278,7 @@ router.post("/api/auth/register", async (req, res) => {
 
 // POST /api/auth/login — email + password. Sends a 6-digit OTP (verification
 // if the email is unverified, login otherwise) that must be confirmed.
-router.post("/api/auth/login", async (req, res) => {
+router.post("/api/auth/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body || {};
     const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -282,7 +322,7 @@ router.post("/api/auth/login", async (req, res) => {
 
 // POST /api/auth/verify-otp — confirm the 6-digit code, activate the email
 // (if needed) and create the session.
-router.post("/api/auth/verify-otp", async (req, res) => {
+router.post("/api/auth/verify-otp", otpVerifyLimiter, async (req, res) => {
   try {
     const { email, code } = req.body || {};
     const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -326,7 +366,7 @@ router.post("/api/auth/verify-otp", async (req, res) => {
 });
 
 // POST /api/auth/resend-otp — send a fresh code (rate-limited).
-router.post("/api/auth/resend-otp", async (req, res) => {
+router.post("/api/auth/resend-otp", resendLimiter, async (req, res) => {
   try {
     const { email, reason } = req.body || {};
     const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -338,7 +378,13 @@ router.post("/api/auth/resend-otp", async (req, res) => {
       where: { email: normalizedEmail },
     });
     if (!user) {
-      return res.status(400).json({ error: "Aucun compte pour cet email." });
+      // Enumeration-safe: same success shape, no email sent.
+      return res.json({
+        ok: true,
+        email: normalizedEmail,
+        dev: false,
+        expiresInSec: 600,
+      });
     }
 
     const otpReason: "verification" | "login" | "password_reset" =
@@ -373,18 +419,32 @@ router.get("/api/auth/me", async (req, res) => {
   return res.json({ user: publicUser(user), isMock: Boolean(session.mock) });
 });
 
-// POST /api/auth/plan — select a subscription plan for the user.
+// POST /api/auth/plan — select a subscription plan for the user. The plan is
+// NOT activated here: it is recorded as "pending" and only the admin approve
+// endpoint flips it to "active" once the manual payment is verified.
+const PLAN_IDS = ["monthly", "quarterly", "lifetime"] as const;
 router.post("/api/auth/plan", requireAuth, async (req, res) => {
   const session = req.user as SessionPayload;
   const { plan } = req.body || {};
-  if (!plan) return res.status(400).json({ error: "Plan requis." });
+  if (typeof plan !== "string" || !PLAN_IDS.includes(plan as (typeof PLAN_IDS)[number])) {
+    return res.status(400).json({ error: "Plan invalide." });
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: session.sub },
+    select: { planStatus: true },
+  });
+  // Never downgrade/lock an already-active subscription by re-selecting.
+  if (current?.planStatus === "active") {
+    return res.status(400).json({ error: "Un plan est déjà actif." });
+  }
+
   const user = await prisma.user.update({
     where: { id: session.sub },
     data: {
       plan,
-      planStatus: "active",
+      planStatus: "pending",
       planSelectedAt: new Date(),
-      planActiveFrom: new Date(),
     },
   });
   res.json({ user: publicUser(user) });
@@ -396,9 +456,59 @@ router.post("/api/auth/logout", (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/config — public config (admin payment contacts).
-router.get("/api/config", (_req, res) => {
-  res.json({ adminEmail: ADMIN_EMAIL, adminTelegram: ADMIN_TELEGRAM });
+// GET /api/config — public config (admin payment contacts), DB-backed with env fallback.
+router.get("/api/config", async (_req, res) => {
+  try {
+    const cfg = await prisma.platformConfig.findUnique({ where: { id: 'singleton' } });
+    res.json({
+      adminEmail: cfg?.adminEmail || ADMIN_EMAIL,
+      adminTelegram: cfg?.adminTelegram || ADMIN_TELEGRAM,
+      whatsappNumber: cfg?.whatsappNumber || "",
+    });
+  } catch (err) {
+    console.error("Get config error:", err);
+    res.json({ adminEmail: ADMIN_EMAIL, adminTelegram: ADMIN_TELEGRAM, whatsappNumber: "" });
+  }
+});
+
+// POST /api/contact — send a contact form message to the admin by email.
+router.post("/api/contact", requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const name = typeof b.name === "string" ? b.name.trim() : "";
+    const email = typeof b.email === "string" ? b.email.trim() : "";
+    const subject = typeof b.subject === "string" ? b.subject.trim() : "";
+    const message = typeof b.message === "string" ? b.message.trim() : "";
+
+    if (!name || name.length > 120) {
+      return res.status(400).json({ error: "Nom invalide." });
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 128) {
+      return res.status(400).json({ error: "Email invalide." });
+    }
+    if (!subject || subject.length > 120) {
+      return res.status(400).json({ error: "Sujet invalide." });
+    }
+    if (!message || message.length < 10 || message.length > 5000) {
+      return res.status(400).json({ error: "Le message doit contenir entre 10 et 5000 caractères." });
+    }
+
+    // Resolve admin email from DB (env fallback)
+    const cfg = await prisma.platformConfig.findUnique({ where: { id: "singleton" } }).catch(() => null);
+    const adminEmail = cfg?.adminEmail || ADMIN_EMAIL;
+
+    await sendContactEmail(adminEmail, {
+      fromName: name,
+      fromEmail: email,
+      subject,
+      message,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Contact form error:", err);
+    res.status(500).json({ error: "Erreur lors de l'envoi. Réessaie." });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -407,7 +517,7 @@ router.get("/api/config", (_req, res) => {
 
 // POST /api/auth/forgot-password — send a password-reset OTP. Enumeration-safe:
 // always returns the same shape whether or not the email has an account.
-router.post("/api/auth/forgot-password", async (req, res) => {
+router.post("/api/auth/forgot-password", resendLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email || typeof email !== "string")
@@ -447,7 +557,7 @@ router.post("/api/auth/forgot-password", async (req, res) => {
 
 // POST /api/auth/verify-reset-otp — confirm the password-reset code and issue
 // a short-lived reset token.
-router.post("/api/auth/verify-reset-otp", async (req, res) => {
+router.post("/api/auth/verify-reset-otp", otpVerifyLimiter, async (req, res) => {
   try {
     const { email, code } = req.body;
     if (!email || !code) return res.status(400).json({ error: "Email et code requis." });
@@ -499,16 +609,57 @@ router.post("/api/auth/reset-password", async (req, res) => {
 });
 
 // POST /api/user/payment-proof — submit payment proof
-router.post("/user/payment-proof", requireAuth, async (req, res) => {
+const MAX_PROOF_BYTES = 5 * 1024 * 1024; // 5 MB decoded
+const PROOF_MIME = /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/i;
+
+function validateProof(
+  proof: unknown,
+): { ok: true; dataUrl: string } | { ok: false; error: string } {
+  if (proof == null || proof === "") return { ok: true, dataUrl: "" };
+  if (typeof proof !== "string" || !proof.startsWith("data:")) {
+    return { ok: false, error: "Preuve invalide." };
+  }
+  const header = proof.match(/^data:([^;]+);base64,/);
+  if (!header || !PROOF_MIME.test(header[1])) {
+    return { ok: false, error: "Format de preuve non supporté (image ou PDF)." };
+  }
+  const approxBytes = Math.ceil(((proof.length - header[0].length) * 3) / 4);
+  if (approxBytes > MAX_PROOF_BYTES) {
+    return { ok: false, error: "La preuve dépasse 5 Mo." };
+  }
+  return { ok: true, dataUrl: proof };
+}
+
+router.post("/api/user/payment-proof", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.sub;
-    const { proof, method } = req.body;
+    const { proof, method } = req.body || {};
+
+    if (typeof method !== "string" || !method) {
+      return res.status(400).json({ error: "Méthode de paiement requise." });
+    }
+    const paymentMethod = await prisma.paymentMethod.findFirst({
+      where: { code: method, enabled: true },
+      select: { code: true },
+    });
+    if (!paymentMethod) {
+      return res.status(400).json({ error: "Méthode de paiement invalide." });
+    }
+
+    if (proof == null || proof === "") {
+      return res.status(400).json({ error: "Preuve de paiement requise." });
+    }
+
+    const check = validateProof(proof);
+    if (!check.ok) {
+      return res.status(400).json({ error: (check as { error: string }).error });
+    }
 
     await prisma.user.update({
       where: { id: userId },
       data: {
-        paymentProof: proof || null,
-        paymentMethod: method || null,
+        paymentProof: check.dataUrl || null,
+        paymentMethod: method,
         paymentSubmittedAt: new Date(),
       },
     });
@@ -517,18 +668,6 @@ router.post("/user/payment-proof", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Payment proof error:", err);
     res.status(500).json({ error: "Erreur serveur." });
-  }
-});
-
-// POST /api/admin/make-me-admin — TEMPORARY: make a user admin (remove after use)
-router.get("/admin/make-me-admin", async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({ where: { email: "admin@dzads.ai" } });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
-    res.json({ ok: true, message: `${user.email} is now admin` });
-  } catch (err) {
-    res.status(500).json({ error: "Failed" });
   }
 });
 

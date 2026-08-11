@@ -46,13 +46,30 @@ export default function Settings() {
   const toast = useToast();
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which secret fields are currently set server-side (never prefilled — the
+  // server returns them masked, so we only track a boolean).
+  const [tokensSet, setTokensSet] = useState<Record<string, boolean>>({});
+
+  // Token fields are secrets — stored encrypted server-side, never echoed
+  // back in full and never written to localStorage.
+  const TOKEN_KEYS = [
+    'facebookAdsToken', 'tiktokAdsToken', 'googleAdsDeveloperToken',
+    'snapAdsToken', 'geminiApiKey', 'customApiToken',
+  ];
 
   useEffect(() => {
     let cancelled = false;
     const applySettings = (parsed: any) => {
+      const stripped: Record<string, any> = { ...parsed };
+      const setFlags: Record<string, boolean> = {};
+      for (const k of TOKEN_KEYS) {
+        setFlags[k] = Boolean(parsed?.[k]);
+        stripped[k] = ''; // never prefill a secret into an editable input
+      }
+      setTokensSet(setFlags);
       setSettings(prev => ({
         ...prev,
-        ...parsed
+        ...stripped,
       }));
     };
 
@@ -63,15 +80,6 @@ export default function Settings() {
         applySettings(saved);
       } catch (e) {
         console.error('Failed to load settings from API', e);
-        // Fallback to localStorage
-        const savedSettings = localStorage.getItem('dzads_settings');
-        if (savedSettings) {
-          try {
-            applySettings(JSON.parse(savedSettings));
-          } catch (err) {
-            console.error('Failed to parse settings');
-          }
-        }
       }
     })();
     return () => { cancelled = true; };
@@ -79,13 +87,16 @@ export default function Settings() {
 
   const handleSave = () => {
     try {
-      localStorage.setItem('dzads_settings', JSON.stringify(settings));
-      // Persist to API (fire-and-forget — never block the UI on network errors)
-      settingsApi.update(settings).catch(() => {});
-      setIsSaved(true);
-      setError(null);
-      toast.success('Paramètres enregistrés avec succès ! 💾');
-      setTimeout(() => setIsSaved(false), 3000);
+      // Persist to API only — secrets are never written to localStorage.
+      settingsApi.update(settings).then(() => {
+        setIsSaved(true);
+        setError(null);
+        toast.success('Paramètres enregistrés avec succès ! 💾');
+        setTimeout(() => setIsSaved(false), 3000);
+      }).catch(() => {
+        setError('Erreur lors de la sauvegarde des paramètres');
+        toast.error('Erreur lors de la sauvegarde');
+      });
     } catch (e) {
       setError('Erreur lors de la sauvegarde des paramètres');
       toast.error('Erreur lors de la sauvegarde');
@@ -108,29 +119,29 @@ export default function Settings() {
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">Gemini AI</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.geminiApiKey ? "bg-emerald-500" : "bg-white/10")} />
-            <span className="text-xs font-bold text-white">{settings.geminiApiKey ? "Connecté" : "Déconnecté"}</span>
+            <div className={cn("w-2 h-2 rounded-full", tokensSet.geminiApiKey ? "bg-emerald-500" : "bg-white/10")} />
+            <span className="text-xs font-bold text-white">{tokensSet.geminiApiKey ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">Facebook</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.facebookAdsToken ? "bg-emerald-500" : "bg-white/10")} />
-            <span className="text-xs font-bold text-white">{settings.facebookAdsToken ? "Connecté" : "Déconnecté"}</span>
+            <div className={cn("w-2 h-2 rounded-full", tokensSet.facebookAdsToken ? "bg-emerald-500" : "bg-white/10")} />
+            <span className="text-xs font-bold text-white">{tokensSet.facebookAdsToken ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">TikTok</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.tiktokAdsToken ? "bg-emerald-500" : "bg-white/10")} />
-            <span className="text-xs font-bold text-white">{settings.tiktokAdsToken ? "Connecté" : "Déconnecté"}</span>
+            <div className={cn("w-2 h-2 rounded-full", tokensSet.tiktokAdsToken ? "bg-emerald-500" : "bg-white/10")} />
+            <span className="text-xs font-bold text-white">{tokensSet.tiktokAdsToken ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
         <div className="glass-card p-4 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-black uppercase tracking-tighter text-white/30 mb-1">Google</p>
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", settings.googleAdsDeveloperToken ? "bg-emerald-500" : "bg-white/10")} />
-            <span className="text-xs font-bold text-white">{settings.googleAdsDeveloperToken ? "Connecté" : "Déconnecté"}</span>
+            <div className={cn("w-2 h-2 rounded-full", tokensSet.googleAdsDeveloperToken ? "bg-emerald-500" : "bg-white/10")} />
+            <span className="text-xs font-bold text-white">{tokensSet.googleAdsDeveloperToken ? "Connecté" : "Déconnecté"}</span>
           </div>
         </div>
       </div>
@@ -191,12 +202,12 @@ export default function Settings() {
                   type="password"
                   value={settings.geminiApiKey || ''}
                   onChange={(e) => setSettings({...settings, geminiApiKey: e.target.value})}
-                  placeholder="Introduisez votre clé API AI Studio..."
+                  placeholder={tokensSet.geminiApiKey ? '•••••••• (configuré — laisser vide pour conserver)' : 'Introduisez votre clé API AI Studio...'}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
                 />
                 <div className="mt-4 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
                    <p className="text-[10px] text-indigo-300 leading-relaxed italic">
-                     <strong>Note :</strong> Cette clé alimente l'Expert Chat, l'analyse d'images et le générateur de landing pages.
+                     <strong>Note :</strong> Cette clé alimente toute la génération IA (images, vidéos, copy, analyses…). Elle est chiffrée et ne quitte jamais le serveur.
                    </p>
                 </div>
               </div>
@@ -243,7 +254,7 @@ export default function Settings() {
                       type="password"
                       value={settings.facebookAdsToken || ''}
                       onChange={(e) => setSettings({...settings, facebookAdsToken: e.target.value})}
-                      placeholder="EAAG..."
+                      placeholder={tokensSet.facebookAdsToken ? '•••••••• (configuré — laisser vide pour conserver)' : 'EAAG...'}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
                     />
                   </div>
@@ -284,7 +295,7 @@ export default function Settings() {
                       type="password"
                       value={settings.tiktokAdsToken || ''}
                       onChange={(e) => setSettings({...settings, tiktokAdsToken: e.target.value})}
-                      placeholder="Ex: tt_at_..."
+                      placeholder={tokensSet.tiktokAdsToken ? '•••••••• (configuré — laisser vide pour conserver)' : 'Ex: tt_at_...'}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
                     />
                   </div>
@@ -324,7 +335,7 @@ export default function Settings() {
                       type="password"
                       value={settings.googleAdsDeveloperToken || ''}
                       onChange={(e) => setSettings({...settings, googleAdsDeveloperToken: e.target.value})}
-                      placeholder="Votre Token Développeur..."
+                      placeholder={tokensSet.googleAdsDeveloperToken ? '•••••••• (configuré — laisser vide pour conserver)' : 'Votre Token Développeur...'}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
                     />
                   </div>
@@ -365,7 +376,7 @@ export default function Settings() {
                       type="password"
                       value={settings.snapAdsToken || ''}
                       onChange={(e) => setSettings({...settings, snapAdsToken: e.target.value})}
-                      placeholder="snap_at_..."
+                      placeholder={tokensSet.snapAdsToken ? '•••••••• (configuré — laisser vide pour conserver)' : 'snap_at_...'}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
                     />
                   </div>
@@ -400,10 +411,10 @@ export default function Settings() {
                   type="password"
                   value={settings.customApiToken || ''}
                   onChange={(e) => setSettings({...settings, customApiToken: e.target.value})}
-                  placeholder="Introduisez votre jeton secret..."
+                  placeholder={tokensSet.customApiToken ? '•••••••• (configuré — laisser vide pour conserver)' : 'Introduisez votre jeton secret...'}
                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500/30 transition-all font-mono"
                 />
-                <p className="mt-2 text-[10px] text-white/30 italic">Votre token est chiffré et stocké uniquement dans votre navigateur.</p>
+                <p className="mt-2 text-[10px] text-white/30 italic">Votre token est chiffré et stocké côté serveur. Il n'est jamais réaffiché.</p>
               </div>
             </div>
           </motion.div>

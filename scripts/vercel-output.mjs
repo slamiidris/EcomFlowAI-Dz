@@ -1,0 +1,68 @@
+// Assembles the Vercel Filesystem Build Output (.vercel/output):
+//   - static/            <- the built frontend (dist/), minus the Node bundle
+//   - functions/api.func <- the whole Express backend bundled into ONE file
+// This avoids the @vercel/node ESM import-resolution issue with relative
+// TS imports outside api/ (see api/index.ts -> ../server).
+import { execSync } from "node:child_process";
+import { cpSync, mkdirSync, rmSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const out = join(root, ".vercel", "output");
+const funcDir = join(out, "functions", "api.func");
+const staticDir = join(out, "static");
+const distDir = join(root, "dist");
+
+if (!existsSync(distDir)) {
+  throw new Error("dist/ not found — run `npm run build` (vite) before this script.");
+}
+
+// 1. Reset output
+rmSync(out, { recursive: true, force: true });
+mkdirSync(funcDir, { recursive: true });
+
+// 2. Static frontend (exclude the Node server bundle + sourcemap)
+mkdirSync(staticDir, { recursive: true });
+for (const entry of readdirSync(distDir)) {
+  if (entry === "server.cjs" || entry === "server.cjs.map") continue;
+  cpSync(join(distDir, entry), join(staticDir, entry), { recursive: true });
+}
+
+// 3. Bundle the API server into a single self-contained CJS file
+execSync(
+  `npx esbuild api/index.ts --bundle --platform=node --format=cjs ` +
+    `--external:pg-native --external:*.node ` +
+    `--outfile=${join(funcDir, "index.cjs")}`,
+  { cwd: root, stdio: "inherit" }
+);
+
+// 4. Function runtime config
+writeFileSync(
+  join(funcDir, ".vc-config.json"),
+  JSON.stringify(
+    { runtime: "nodejs22.x", handler: "index.cjs", launcherType: "Nodejs" },
+    null,
+    2
+  )
+);
+
+// 5. Routes: API -> the function, everything else -> SPA fallback
+writeFileSync(
+  join(out, "config.json"),
+  JSON.stringify(
+    {
+      version: 3,
+      routes: [
+        // Serve static files first; only apply the routes below on a miss.
+        { handle: "filesystem" },
+        { src: "/api/(.*)", dest: "/api" },
+        { src: "/(.*)", dest: "/index.html" },
+      ],
+    },
+    null,
+    2
+  )
+);
+
+console.log(`Filesystem output ready at ${out}`);

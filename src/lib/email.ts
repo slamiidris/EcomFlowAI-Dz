@@ -112,3 +112,74 @@ export async function sendOtpEmail(
   console.log("──────────────────────────────────────────────");
   return { dev: true, provider: "console" };
 }
+
+// ---------------------------------------------------------------------------
+// Contact form email
+// ---------------------------------------------------------------------------
+
+function contactHtml(fromName: string, fromEmail: string, subject: string, message: string): string {
+  return `
+  <div style="background:#0b0c0a;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+    <div style="max-width:520px;margin:0 auto;background:#121411;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;color:#e2e8f0;">
+      <div style="font-size:28px;text-align:center;">💬</div>
+      <h1 style="text-align:center;font-size:20px;color:#ffffff;margin:12px 0 4px;">Nouveau message de contact</h1>
+      <p style="text-align:center;color:#94a3b8;font-size:14px;margin:0 0 24px;">
+        Un utilisateur t'a envoyé un message via EcomFlow AI.
+      </p>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:20px;">
+        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">De :</b> ${fromName} &lt;${fromEmail}&gt;</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">Sujet :</b> ${subject}</p>
+        <p style="margin:0;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">Message :</b></p>
+        <p style="margin:8px 0 0;font-size:14px;color:#e2e8f0;white-space:pre-wrap;line-height:1.6;">${message}</p>
+      </div>
+      <p style="text-align:center;color:#64748b;font-size:11px;margin:0;">
+        Envoyé depuis le tableau de bord EcomFlow AI.
+      </p>
+    </div>
+  </div>`;
+}
+
+export async function sendContactEmail(
+  to: string,
+  opts: { fromName: string; fromEmail: string; subject: string; message: string },
+): Promise<SendResult> {
+  const html = contactHtml(opts.fromName, opts.fromEmail, opts.subject, opts.message);
+  const subject = `[EcomFlow AI] ${opts.subject} — ${opts.fromName}`;
+
+  // 1. Resend
+  if (RESEND_API_KEY) {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: EMAIL_FROM, to, subject, html }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Resend failed (${res.status}): ${body}`);
+    }
+    return { deliveredTo: to, dev: false, provider: "resend" };
+  }
+
+  // 2. SMTP
+  if (SMTP_HOST) {
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_SECURE,
+      auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+    });
+    await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
+    return { deliveredTo: to, dev: false, provider: "smtp" };
+  }
+
+  // 3. Console (dev)
+  console.log("──────────────────────────────────────────────");
+  console.log(`[EMAIL:DEV] CONTACT from ${opts.fromName} <${opts.fromEmail}>`);
+  console.log(`[EMAIL:DEV] Subject: ${opts.subject}`);
+  console.log(`[EMAIL:DEV] Message: ${opts.message}`);
+  console.log("──────────────────────────────────────────────");
+  return { dev: true, provider: "console" };
+}

@@ -107,21 +107,34 @@ interface LPSession {
 }
 
 // Normalise server/localStorage sessions and ensure all restored sections have IDs for dnd-kit.
+// Guards every field the archive UI reads (id/title/updatedAt/brand/category) so a
+// malformed or legacy session can never produce NaN dates or crash the list.
 function migrateLpSessions(list: any[]): LPSession[] {
-  return list.map((session: any) => ({
-    ...session,
-    updatedAt: typeof session.updatedAt === 'number' ? session.updatedAt : new Date(session.updatedAt).getTime(),
-    state: {
-      ...session.state,
-      lpData: session.state?.lpData ? {
-        ...session.state.lpData,
-        sections: session.state.lpData.sections?.map((s: any, idx: number) => ({
-          ...s,
-          id: s.id || `restored-${idx}-${Date.now()}`
-        })) || []
-      } : null
-    }
-  }));
+  return list.map((session: any) => {
+    const rawUpdatedAt = session.updatedAt;
+    const parsedUpdatedAt =
+      typeof rawUpdatedAt === 'number'
+        ? rawUpdatedAt
+        : new Date(rawUpdatedAt).getTime();
+    return {
+      ...session,
+      id: session.id || `lp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: session.title || 'Sans Titre',
+      updatedAt: Number.isNaN(parsedUpdatedAt) ? Date.now() : parsedUpdatedAt,
+      state: {
+        ...session.state,
+        brand: session.state?.brand || '',
+        category: session.state?.category || '',
+        lpData: session.state?.lpData ? {
+          ...session.state.lpData,
+          sections: session.state.lpData.sections?.map((s: any, idx: number) => ({
+            ...s,
+            id: s.id || `restored-${idx}-${Date.now()}`
+          })) || []
+        } : null
+      }
+    };
+  });
 }
 
 interface SortableSectionProps {
@@ -781,7 +794,7 @@ export default function LandingPageGenerator() {
       if (isQuota) {
         setError("Quota Gemini épuisé. L'IA est surchargée ou vous avez atteint votre limite temporaire (Erreur 429). Veuillez patienter 1 minute ou remplir manuellement.");
       } else {
-        setError("Erreur lors de l'analyse des images. Veuillez vérifier votre connexion.");
+        setError(err.message || "Erreur lors de l'analyse des images. Veuillez vérifier votre connexion.");
       }
     } finally {
       setAnalyzing(false);
@@ -825,7 +838,7 @@ export default function LandingPageGenerator() {
       }
     } catch (err: any) {
       console.error("Complete analysis failed:", err);
-      setError("Une erreur est survenue lors de la finalisation de l'analyse.");
+      setError(err.message || "Une erreur est survenue lors de la finalisation de l'analyse.");
     } finally {
       setCompletingAnalysis(false);
     }
@@ -1027,7 +1040,7 @@ export default function LandingPageGenerator() {
       if (isQuota || errorStr.includes("QUOTA_EXCEEDED")) {
         setError("Quota Gemini épuisé. L'API est surchargée ou vous avez atteint votre limite temporaire. Veuillez patienter 1 à 2 minutes avant de réessayer.");
       } else {
-        setError("Une erreur est survenue lors de la génération. Veuillez vérifier votre connexion et réessayer.");
+        setError(err.message || "Une erreur est survenue lors de la génération. Veuillez vérifier votre connexion et réessayer.");
       }
     } finally {
       setLoading(false);
@@ -1222,11 +1235,12 @@ export default function LandingPageGenerator() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {sessions
-                    .filter(s => 
-                      s.title.toLowerCase().includes(historySearch.toLowerCase()) || 
-                      s.state.brand.toLowerCase().includes(historySearch.toLowerCase()) ||
-                      s.state.category.toLowerCase().includes(historySearch.toLowerCase())
-                    )
+                    .filter(s => {
+                      const q = historySearch.toLowerCase();
+                      return (s.title || '').toLowerCase().includes(q) ||
+                        (s.state?.brand || '').toLowerCase().includes(q) ||
+                        (s.state?.category || '').toLowerCase().includes(q);
+                    })
                     .map((session) => (
                       <motion.div
                         key={session.id}

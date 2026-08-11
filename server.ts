@@ -5,6 +5,9 @@ import cors from "cors";
 import { GoogleGenAI, Type } from "@google/genai";
 import { getTelegramPulse } from "./server-telegram";
 import { prisma } from "./src/lib/prisma";
+import { requireAuth, SessionPayload } from "./src/lib/session";
+import { decryptSecret, isEncryptedSecret } from "./src/lib/crypto";
+import { createRateLimiter } from "./src/lib/rateLimit";
 import { authRouter } from "./src/routes/auth";
 import { catalogRouter } from "./src/routes/catalog";
 import dashboardRouter from "./src/routes/dashboard";
@@ -17,10 +20,79 @@ import adminRouter from "./src/routes/admin";
 // Keep in sync with src/services/gemini.ts MODEL_NAME.
 const MODEL_NAME = "gemini-3-flash-preview";
 
+// Only these models may be invoked through the server proxy — the client can
+// no longer pick arbitrary (potentially expensive) models.
+const ALLOWED_MODELS = new Set([MODEL_NAME, "gemini-2.5-flash-image"]);
+
+// Config keys the proxy will forward to Gemini. Anything else (tools,
+// toolConfig, safety settings, …) is dropped so a caller can't escalate
+// the request shape.
+const SAFE_CONFIG_KEYS = new Set([
+  "responseMimeType",
+  "responseSchema",
+  "maxOutputTokens",
+  "temperature",
+  "topP",
+  "topK",
+  "candidateCount",
+  "systemInstruction",
+]);
+
+function sanitizeConfig(config: unknown): Record<string, unknown> | undefined {
+  if (!config || typeof config !== "object") return undefined;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(config)) {
+    if (SAFE_CONFIG_KEYS.has(k)) out[k] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+// All client AI traffic (chat, image gen, every tool) goes through the
+// generic proxy now, so keep this generous enough for a real session.
+const aiRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 40,
+  keyFn: (req: any) => req.user?.sub || req.ip,
+  message: "Trop de requêtes IA. Réessaie dans une minute.",
+});
+
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
+// Trust the first upstream proxy so req.ip reflects the real client
+// (Vercel edge / local Express). Required for accurate rate-limit keys.
+app.set("trust proxy", true);
+
+// Security headers (helmet-equivalent with CSP off — the app uses Tailwind
+// inline styles, so a strict CSP would break it).
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-XSS-Protection", "0");
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
+
+// CORS allowlist — no open reflection. Same-origin SPA is unaffected.
+const APP_URL = process.env.APP_URL || "";
+const ALLOWED_ORIGINS = new Set(
+  (process.env.CORS_ORIGINS || APP_URL)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: false,
+  }),
+);
 app.use(express.json({ limit: '10mb' })); // Increase limit for images
 
 // Register all API routes before the SPA catch-all.
@@ -33,22 +105,50 @@ app.use(sessionsRouter);
 app.use(settingsRouter);
 app.use(adminRouter);
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+function makeAiClient(apiKey?: string) {
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
+
+const NO_KEY_MSG = "Ajoute ta clé Gemini dans Paramètres pour utiliser l'IA.";
+
+// Per-user Gemini key resolution. Every account (admin included) uses its own
+// key, stored encrypted in api_settings and set from the Paramètres page.
+// There is no platform-wide key. Returns null when the user has no key
+// configured → the caller responds with NO_KEY_MSG.
+async function resolveGeminiKey(session: SessionPayload): Promise<string | null> {
+  const row = await prisma.user.findUnique({
+    where: { id: session.sub },
+    select: { apiSettings: { select: { geminiApiKey: true } } },
+  });
+  const blob = row?.apiSettings?.geminiApiKey;
+  if (blob && isEncryptedSecret(blob)) {
+    try {
+      return decryptSecret(blob);
+    } catch (err) {
+      console.error("Failed to decrypt user Gemini API key:", err);
     }
   }
-});
+  return null;
+}
 
 // API routes setup
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", env: process.env.NODE_ENV });
 });
 
-app.post("/api/ai/generate-product", async (req, res) => {
+app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res) => {
   try {
+    const apiKey = await resolveGeminiKey(req.user as SessionPayload);
+    if (!apiKey) return res.status(400).json({ error: NO_KEY_MSG });
+    const ai = makeAiClient(apiKey);
+
     const { image, currentName, purchasePrice, sellingPrice } = req.body;
 
     let prompt = "Tu es un expert en e-commerce pour le marché algérien. ";
@@ -108,14 +208,25 @@ app.post("/api/ai/generate-product", async (req, res) => {
 
 // Generic Gemini proxy — keeps the API key server-side.
 // The client builds the prompt + config and sends them here; the server
-// performs the actual Gemini call with GEMINI_API_KEY and relays the result.
-app.post("/api/ai/generate", async (req, res) => {
+// performs the actual Gemini call with the user's own stored key and relays
+// the result. Returns NO_KEY_MSG when the user hasn't set a key in Paramètres.
+app.post("/api/ai/generate", requireAuth, aiRateLimiter, async (req, res) => {
   try {
     const { model = MODEL_NAME, contents, config } = req.body || {};
     if (!contents) {
       return res.status(400).json({ error: "Missing 'contents' in request body" });
     }
-    const response = await ai.models.generateContent({ model, contents, config });
+    if (typeof model !== "string" || !ALLOWED_MODELS.has(model)) {
+      return res.status(400).json({ error: "Modèle non autorisé." });
+    }
+    const apiKey = await resolveGeminiKey(req.user as SessionPayload);
+    if (!apiKey) return res.status(400).json({ error: NO_KEY_MSG });
+    const ai = makeAiClient(apiKey);
+    const response = await ai.models.generateContent({
+      model,
+      contents,
+      config: sanitizeConfig(config),
+    });
     res.json({
       text: response.text ?? "",
       candidates: response.candidates ?? [],
@@ -132,14 +243,17 @@ app.post("/api/ai/generate", async (req, res) => {
       errorString.includes("QUOTA_EXCEEDED") ||
       error?.status === "RESOURCE_EXHAUSTED" ||
       error?.code === 429;
-    // Return 429 on rate-limit so the client's retry logic kicks in.
-    res.status(isQuota ? 429 : 500).json({ error: error?.message || "Gemini proxy failed" });
+    // Return 429 on quota so the client's backoff retry kicks in, but never
+    // leak upstream error details to the caller.
+    res.status(isQuota ? 429 : 500).json({
+      error: isQuota ? "Quota Gemini dépassé. Réessaie dans un instant." : "Erreur serveur IA.",
+    });
   }
 });
 
 // Telegram product trends — real MTProto read when credentials are configured,
 // otherwise a clearly-labeled simulation (see server-telegram.ts).
-app.get("/api/telegram-trends", async (_req, res) => {
+app.get("/api/telegram-trends", requireAuth, async (_req, res) => {
   const pulse = await getTelegramPulse();
   res.json(pulse);
 });
@@ -155,6 +269,8 @@ app.use(express.static(distPath));
 app.get('*all', (req, res, next) => {
   // Skip if it's an API route that wasn't matched
   if (req.url.startsWith('/api/')) return next();
+  // In development, let Vite handle SPA routing
+  if (process.env.NODE_ENV !== 'production') return next();
 
   const indexPath = path.join(distPath, 'index.html');
   res.sendFile(indexPath, (err) => {

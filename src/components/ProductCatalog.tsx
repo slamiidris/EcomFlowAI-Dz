@@ -240,7 +240,7 @@ export default function ProductCatalog() {
       }));
     } catch (error) {
       console.error('AI error:', error);
-      alert("Erreur lors de la génération. Veuillez réessayer.");
+      alert(error?.message || "Erreur lors de la génération. Veuillez réessayer.");
     } finally {
       setIsGenerating(false);
     }

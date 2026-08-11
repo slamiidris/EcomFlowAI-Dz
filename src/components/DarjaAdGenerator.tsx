@@ -66,7 +66,7 @@ export default function DarjaAdGenerator() {
       if (isQuota) {
         setError("Quota Gemini épuisé. L'IA a besoin d'une pause ou votre limite est atteinte (Erreur 429). Réessayez dans quelques minutes.");
       } else {
-        setError("Erreur lors de la génération des pubs. Veuillez vérifier votre connexion.");
+        setError(err.message || "Erreur lors de la génération des pubs. Veuillez vérifier votre connexion.");
       }
     } finally {
       setIsLoading(false);

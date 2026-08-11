@@ -349,9 +349,14 @@ export default function VideoAdGenerator() {
           }
           toast.success("Produit détecté avec succès ! Détails pré-remplis.");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Image analysis error:", err);
-        toast.info("L'image a été chargée mais l'analyse IA automatique a échoué. Vous pouvez continuer de remplir les détails.");
+        if (err?.status === 400) {
+          // Definitive client-side rejection (e.g. no Gemini key) — tell the user.
+          toast.error(err.message || "Analyse IA impossible.");
+        } else {
+          toast.info("L'image a été chargée mais l'analyse IA automatique a échoué. Vous pouvez continuer de remplir les détails.");
+        }
       } finally {
         setIsAnalyzingImage(false);
       }
@@ -604,7 +609,7 @@ Style d'accroche / Hook de départ : ${hookType}
       if (isQuota) {
         setError("Quota Gemini épuisé. L'IA a besoin d'une pause ou votre limite est atteinte (429). Réessayez dans quelques minutes.");
       } else {
-        setError("Erreur lors de la génération du script. Veuillez vérifier votre connexion.");
+        setError(err.message || "Erreur lors de la génération du script. Veuillez vérifier votre connexion.");
       }
     } finally {
       setLoading(false);

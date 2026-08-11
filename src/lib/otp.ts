@@ -2,12 +2,24 @@
  * 6-digit email OTP issuance & verification (stored hashed, never raw).
  * Rate-limited: 1 send / 60s, max 6 sends per hour per user.
  */
-import { createHash, randomInt, randomUUID } from "crypto";
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from "crypto";
 import { prisma } from "./prisma";
 
 export const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute
 const OTP_MAX_PER_HOUR = 6;
+const MAX_OTP_ATTEMPTS = 5; // hard lockout per code
+
+// Keyed HMAC so a DB dump cannot be brute-forced offline (6-digit space).
+// Fails closed in production when no secret is configured.
+const OTP_SECRET = (() => {
+  const s = process.env.OTP_HASH_SECRET || process.env.SESSION_SECRET;
+  if (s) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("OTP_HASH_SECRET (or SESSION_SECRET) must be set when NODE_ENV=production");
+  }
+  return "dzads-dev-otp-secret"; // dev-only fallback
+})();
 
 export class OtpRateLimitedError extends Error {
   status = 429;
@@ -18,7 +30,7 @@ export class OtpRateLimitedError extends Error {
 }
 
 function hashOtp(code: string): string {
-  return createHash("sha256").update(`dzads-otp:${code}`).digest("hex");
+  return createHmac("sha256", OTP_SECRET).update(code).digest("hex");
 }
 
 export function generateOtpCode(): string {
@@ -96,14 +108,27 @@ export async function verifyOtpCode(
   });
   if (!otp) return false;
 
+  // Already locked out — burn the code so it can't be matched later.
+  if (otp.attempts >= MAX_OTP_ATTEMPTS) {
+    await prisma.emailOtp.update({ where: { id: otp.id }, data: { used: true } });
+    return false;
+  }
+
   const expected = Buffer.from(hashOtp(codeStr), "hex");
   const candidate = Buffer.from(otp.codeHash, "hex");
   const match =
     expected.length === candidate.length &&
-    expected.toString("hex") === candidate.toString("hex");
+    timingSafeEqual(expected, candidate);
 
   if (match) {
     await prisma.emailOtp.update({ where: { id: otp.id }, data: { used: true } });
+  } else {
+    // Increment the guess counter; lock the code out at the limit.
+    const attempts = otp.attempts + 1;
+    await prisma.emailOtp.update({
+      where: { id: otp.id },
+      data: { attempts, used: attempts >= MAX_OTP_ATTEMPTS },
+    });
   }
   return match;
 }
