@@ -118,6 +118,8 @@ export default function AdsPanel({ project, gen, kit }: { project: ProjectHandle
 
   return (
     <div className="space-y-6">
+      {/* the concepts below are h3 cards: give them their section heading (read by screen readers, not shown) */}
+      <h2 className="sr-only">{t('cmpAdsTitle', 'Tes publicités')}</h2>
       <div className="flex flex-wrap items-center gap-3">
         <StatusChip state="ready" label={`v${output.version} · ${formatRelative(output.createdAt, language)}`} />
         <VersionPicker project={project} kind="ads" />

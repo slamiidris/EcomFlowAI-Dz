@@ -1,5 +1,4 @@
 import { useId, type ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 /** A drawn bedside lamp: the example product of the home page illustrations (a drawing, not a photo or an AI output). */
@@ -33,9 +32,10 @@ export function LampArt({ className }: { className?: string }) {
 }
 
 const BACKDROPS = {
-  night: 'bg-[radial-gradient(120%_90%_at_50%_10%,#3d3157_0%,#1b1922_72%)]',
-  linen: 'bg-[radial-gradient(120%_90%_at_50%_10%,#fbf6ec_0%,#e6d9c0_75%)]',
-  violet: 'bg-[radial-gradient(120%_90%_at_50%_10%,#7b5cff_0%,#2a1c73_75%)]',
+  night: 'bg-[radial-gradient(120%_90%_at_50%_10%,#2e2d33_0%,#141416_72%)]', // taste-skill-ignore: the studio light of a drawn product shot
+  linen: 'bg-[radial-gradient(120%_90%_at_50%_10%,#fbf6ec_0%,#e6d9c0_75%)]', // taste-skill-ignore: the studio light of a drawn product shot
+  // the deep red of the home page's light
+  ember: 'bg-[radial-gradient(120%_90%_at_50%_10%,#a3182e_0%,#2a0a10_75%)]', // taste-skill-ignore: the studio light of a drawn product shot
 } as const;
 
 /** The lamp on a studio backdrop, standing in for a product photo. */
@@ -52,25 +52,6 @@ export function Chip({ children, className }: { children: ReactNode; className?:
     <span className={cn('inline-flex items-center gap-1 rounded-[var(--radius-xs)] border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-fg-muted', className)}>
       {children}
     </span>
-  );
-}
-
-/** One generated output inside the illustrations: icon, name, optional ready dot. */
-export function OutputTile({ icon: Icon, label, status, children, className }: { icon: LucideIcon; label: string; status?: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={cn('rounded-[var(--radius-md)] border border-line bg-surface-2 p-3', className)}>
-      <div className="mb-2.5 flex items-center gap-1.5">
-        <Icon size={13} className="shrink-0 text-primary-ink" />
-        <span className="truncate text-[11px] font-semibold text-fg">{label}</span>
-        {status && (
-          <span className="ms-auto inline-flex items-center gap-1 text-[10px] font-medium text-success-ink">
-            <span className="size-1.5 rounded-full bg-success" />
-            {status}
-          </span>
-        )}
-      </div>
-      {children}
-    </div>
   );
 }
 

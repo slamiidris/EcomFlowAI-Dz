@@ -10,7 +10,7 @@ right-to-left), French and English.
 
 ## Stack
 
-- **Frontend:** React 19, Vite 6, Tailwind CSS 4 (single-page app, code-split per tool)
+- **Frontend:** React 19, Vite 6, Tailwind CSS 4 (single-page app, code-split per tool); three.js for the home page's 3D hero
 - **Backend:** Express 5 (`server.ts`, routes in `src/routes`), PostgreSQL through Prisma 7
 - **AI:** Google Gemini, called from the server with each user's own API key (stored encrypted)
 - **Hosting:** Vercel (`npm run deploy:vercel`) or any Node host (`npm run build` then `npm start`)
@@ -54,7 +54,7 @@ src/lib/                   Server and shared logic: sessions, plan rules, OTP, c
                            ad packs and ad visuals (adPack, adCreative, adCreativeRender, adExport)
 src/components/projects/   The campaign workspace: list, new campaign, brief, landing / video / ads / publish tabs
 src/components/ads/, brand/, assets/, meta/   Ads studio, brand kit, file library, Meta connection
-src/components/home/       The public home page (its illustrations are drawn in code, not screenshots)
+src/components/home/       The public home page: the 3D hero (see below) and illustrations drawn in code, not screenshots
 src/pages/, src/components/  Other screens; one file per tool (VideoAdGenerator, LandingPageGenerator...)
 src/i18n/                  Translations, one module per area (see below)
 src/legal/                 Terms of service and privacy policy (a draft: have a lawyer review it)
@@ -62,6 +62,26 @@ prisma/schema.prisma       Database schema
 tests/unit/                Unit tests
 scripts/                   Admin and maintenance scripts
 ```
+
+## Home page
+
+The public home page is always dark (whatever the visitor's app theme), with the red of the Algerian flag as its one
+accent; the app keeps its own violet. Its first screen is a real-time 3D scene: a polished ring turning around a
+crystal cube, seen through a fluted glass panel, lit red from the corners.
+
+- **Scene:** `src/components/home/heroScene.ts` (three.js, no React). The scene is rendered into an HDR target, then a
+  full-screen pass draws it through the fluted panel. The panel's extent and the object's place are read from two
+  invisible guides in `HomeHero.tsx`, so the scene follows the layout at every width and mirrors in Arabic.
+- **Off the main thread:** where the browser supports it (OffscreenCanvas), the scene runs in a worker
+  (`heroWorker.ts`), so three.js and every frame stay off the page's main thread; otherwise it runs on the page
+  (`heroDriver.ts` picks). The 3D code (about 130 KB compressed) loads once the page is idle, after its text has painted.
+- **Cost control:** phones and weak machines get a lighter picture (no refraction pass, lower resolution); the
+  resolution also drops if frames run slow, and drawing stops when the hero is off screen or the tab is hidden.
+- **Fallbacks:** reduced motion gets a single still frame; no WebGL 2, or data saver, gets a still picture
+  (`public/hero/still-*.webp`, about 20 KB each) and downloads no 3D code. If the scene changes, re-render those
+  pictures from the live page (hide the text, capture the hero at 1600×900 and at 390×844 ×2, save as WebP).
+- **Figures** on the first screen are facts about the product (58 wilayas, 4 video formats, 3 languages), not
+  invented usage numbers.
 
 ## Campaigns, brand kit and files
 
@@ -167,7 +187,7 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (434 in 44 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+`npm test` runs the unit tests (456 in 45 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
 delivery, settings validation, pricing, translations, AI error handling, the video timeline, the landing page HTML,
 campaign / file / brand-kit validation, ad packs, ad layouts and CSV export, the Meta payloads, budgets and login state,
 the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React

@@ -23,20 +23,40 @@ export const homeTranslations: TranslationDictionary = {
     ar: "أسئلة شائعة",
     en: "FAQ",
   },
-  homeHeroEyebrow: {
-    fr: "Pour les vendeurs e-commerce en Algérie",
-    ar: "لبائعي التجارة الإلكترونية في الجزائر",
-    en: "For e-commerce sellers in Algeria",
+  homeHeroHeadline: {
+    fr: "Une photo. Toute la campagne.",
+    ar: "صورة واحدة. حملة كاملة.",
+    en: "One photo. A whole campaign.",
   },
-  homeHeroTitleA: {
-    fr: "Une photo produit.",
-    ar: "صورة منتج واحدة.",
-    en: "One product photo.",
+  homeHeroSide: {
+    fr: "Pensé pour la vente en paiement à la livraison en Algérie. Chaque campagne garde ses photos, son brief et toutes ses versions, et rien n’est publié sans ton accord.",
+    ar: "مصمَّم للبيع بالدفع عند الاستلام في الجزائر. تحتفظ كل حملة بصورها وملخّصها وكل نسخها، ولا يُنشر شيء دون موافقتك.",
+    en: "Built for cash-on-delivery selling in Algeria. Every campaign keeps its photos, its brief and every version, and nothing goes live without your approval.",
   },
-  homeHeroTitleB: {
-    fr: "Toute la campagne.",
-    ar: "وحملة كاملة.",
-    en: "A whole campaign.",
+  homeHeroFacts: {
+    fr: "En bref",
+    ar: "باختصار",
+    en: "In short",
+  },
+  homeStatWilayas: {
+    fr: "wilayas dans chaque formulaire de commande",
+    ar: "ولاية في كل استمارة طلب",
+    en: "wilayas in every order form",
+  },
+  homeStatFormats: {
+    fr: "formats vidéo, de la story au plein écran",
+    ar: "صيغ فيديو، من الستوري إلى الشاشة الكاملة",
+    en: "video formats, from story to widescreen",
+  },
+  homeStatLangs: {
+    fr: "langues : arabe, français et anglais",
+    ar: "لغات: العربية والفرنسية والإنجليزية",
+    en: "languages: Arabic, French and English",
+  },
+  homeMenu: {
+    fr: "Menu",
+    ar: "القائمة",
+    en: "Menu",
   },
   homeHeroLead: {
     fr: "Dépose les photos de ton produit. EcomFlow AI écrit la landing page, le script vidéo et les publicités, aux couleurs de ta marque, en arabe, en français ou en anglais.",
@@ -53,36 +73,6 @@ export const homeTranslations: TranslationDictionary = {
     ar: "شاهد المسار",
     en: "See the workflow",
   },
-  homeFactLocal: {
-    fr: "Paiement local ({currency})",
-    ar: "دفع محلي ({currency})",
-    en: "Local payment ({currency})",
-  },
-  homeFactLangs: {
-    fr: "Arabe, français, anglais",
-    ar: "العربية والفرنسية والإنجليزية",
-    en: "Arabic, French, English",
-  },
-  homeFactControl: {
-    fr: "Rien n’est publié sans ton accord",
-    ar: "لا يُنشر شيء دون موافقتك",
-    en: "Nothing goes live without your approval",
-  },
-  homeDemoProduct: {
-    fr: "Lampe de chevet LED",
-    ar: "مصباح سرير LED",
-    en: "LED bedside lamp",
-  },
-  homeDemoObjective: {
-    fr: "Objectif : ventes",
-    ar: "الهدف: المبيعات",
-    en: "Goal: sales",
-  },
-  homeDemoLanding: {
-    fr: "Landing page",
-    ar: "صفحة الهبوط",
-    en: "Landing page",
-  },
   homeDemoVideo: {
     fr: "Vidéo",
     ar: "الفيديو",
@@ -92,11 +82,6 @@ export const homeTranslations: TranslationDictionary = {
     fr: "Publicités",
     ar: "الإعلانات",
     en: "Ads",
-  },
-  homeDemoReady: {
-    fr: "Prête",
-    ar: "جاهزة",
-    en: "Ready",
   },
   homeDemoHeadline: {
     fr: "Une lumière douce pour chaque soir",
@@ -127,16 +112,6 @@ export const homeTranslations: TranslationDictionary = {
     fr: "Offre",
     ar: "العرض",
     en: "Offer",
-  },
-  homeDemoCaption: {
-    fr: "Illustration : les vrais contenus sont générés à partir de tes photos et de ton brief.",
-    ar: "رسم توضيحي: المحتوى الحقيقي يُنشأ انطلاقاً من صورك وملخصك.",
-    en: "Illustration: the real content is generated from your photos and brief.",
-  },
-  homeFlowEyebrow: {
-    fr: "Le parcours",
-    ar: "المسار",
-    en: "The workflow",
   },
   homeFlowTitle: {
     fr: "Du brief à la mise en ligne, au même endroit.",
@@ -192,11 +167,6 @@ export const homeTranslations: TranslationDictionary = {
     fr: "Télécharge tout, ou crée la campagne sur Facebook et Instagram : elle reste en pause jusqu’à ta confirmation.",
     ar: "حمّل كل شيء، أو أنشئ الحملة على فيسبوك وإنستغرام: تبقى متوقفة حتى تؤكدها.",
     en: "Download everything, or create the campaign on Facebook and Instagram: it stays paused until you confirm.",
-  },
-  homeStudiosEyebrow: {
-    fr: "Les studios",
-    ar: "الاستوديوهات",
-    en: "The studios",
   },
   homeStudiosTitle: {
     fr: "Trois studios, une seule marque.",
@@ -337,11 +307,6 @@ export const homeTranslations: TranslationDictionary = {
     fr: "Photos produit, logos et visuels générés, rangés par campagne et prêts à être réutilisés.",
     ar: "صور المنتجات والشعارات والتصاميم المُنشأة، مرتبة حسب الحملة وجاهزة لإعادة الاستخدام.",
     en: "Product photos, logos and generated visuals, sorted by campaign and ready to reuse.",
-  },
-  homeMetaEyebrow: {
-    fr: "Publication Meta",
-    ar: "النشر على Meta",
-    en: "Meta publishing",
   },
   homeMetaTitle: {
     fr: "Publie sur Facebook et Instagram sans perdre la main",

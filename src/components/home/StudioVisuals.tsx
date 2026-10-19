@@ -18,7 +18,7 @@ export function LandingVisual() {
     t('homeLandingSection5', 'Bon de commande'),
   ];
   return (
-    <div aria-hidden="true" className="grid items-center gap-6 sm:grid-cols-2">
+    <div aria-hidden="true" data-ui className="grid items-center gap-6 sm:grid-cols-2">
       <div className="mx-auto w-full max-w-[240px] overflow-hidden rounded-[var(--radius-md)] border border-line bg-surface shadow-[var(--shadow-md)]">
         <div className="bg-primary/8 p-4">
           <ProductPhoto className="aspect-[4/3] w-full rounded-[var(--radius-sm)]" />
@@ -61,7 +61,7 @@ export function VideoVisual() {
     { label: t('homeDemoScene3', 'Offre'), time: '9–15 s', art: 'scale-90 -translate-y-[6%]' },
   ];
   return (
-    <div aria-hidden="true">
+    <div aria-hidden="true" data-ui>
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         {scenes.map((s) => (
           <div key={s.time}>
@@ -87,10 +87,10 @@ export function AdsVisual() {
   const formats = [
     { ratio: 'aspect-square', width: 'w-[31%]', label: '1:1', story: false, backdrop: 'linen' as const },
     { ratio: 'aspect-[4/5]', width: 'w-[31%]', label: '4:5', story: false, backdrop: 'night' as const },
-    { ratio: 'aspect-[9/16]', width: 'w-[27%]', label: '9:16', story: true, backdrop: 'violet' as const },
+    { ratio: 'aspect-[9/16]', width: 'w-[27%]', label: '9:16', story: true, backdrop: 'ember' as const },
   ];
   return (
-    <div aria-hidden="true" className="flex items-end justify-center gap-3 sm:gap-4" dir="ltr">
+    <div aria-hidden="true" data-ui className="flex items-end justify-center gap-3 sm:gap-4" dir="ltr">
       {formats.map((f) => (
         <div key={f.label} className={f.width}>
           <div className={cn('relative overflow-hidden rounded-[var(--radius-sm)] shadow-[var(--shadow-md)]', f.ratio)}>
@@ -122,7 +122,7 @@ export function MetaVisual() {
     { label: t('homeMetaStatus', 'Statut'), value: <span className="rounded-[var(--radius-xs)] bg-warning/12 px-1.5 py-0.5 text-xs font-medium text-warning-ink">{t('homeMetaPaused', 'En pause')}</span> },
   ];
   return (
-    <div aria-hidden="true" className="mx-auto w-full max-w-sm rounded-[var(--radius-md)] border border-line bg-surface p-5 shadow-[var(--shadow-lg)]">
+    <div aria-hidden="true" data-ui className="mx-auto w-full max-w-sm rounded-[var(--radius-md)] border border-line bg-surface p-5 shadow-[var(--shadow-lg)]">
       <p className="text-sm font-semibold text-fg">{t('homeMetaCardTitle', 'Avant d’activer')}</p>
       <dl className="mt-3 divide-y divide-line text-[13px]">
         {rows.map((r) => (
@@ -141,12 +141,13 @@ export function MetaVisual() {
   );
 }
 
-const SWATCHES = ['bg-[#5b3df5]', 'bg-[#17161a]', 'bg-[#f1ece2]', 'bg-[#e3c995]', 'bg-[#2f6f5e]'];
+// an example seller's brand: the green and red of the Algerian flag, sand, ivory and ink
+const SWATCHES = ['bg-[#006233]', 'bg-[#d21034]', 'bg-[#e3c995]', 'bg-[#f1ece2]', 'bg-[#17161a]'];
 
 export function BrandVisual() {
   const { t } = useLanguage();
   return (
-    <div aria-hidden="true" className="flex flex-wrap items-end gap-x-8 gap-y-5">
+    <div aria-hidden="true" data-ui className="flex flex-wrap items-end gap-x-8 gap-y-5">
       <div className="flex -space-x-2 rtl:space-x-reverse">
         {SWATCHES.map((c) => <span key={c} className={cn('size-10 rounded-full border border-line-strong ring-2 ring-surface', c)} />)}
       </div>
@@ -161,8 +162,8 @@ export function BrandVisual() {
 
 export function LibraryVisual() {
   return (
-    <div aria-hidden="true" className="grid grid-cols-3 gap-2">
-      {([['scale-110', 'night'], ['', 'linen'], ['logo', 'night'], ['-translate-y-[6%] scale-90', 'violet'], ['scale-125', 'night'], ['', 'linen']] as const).map(([art, backdrop], i) => (
+    <div aria-hidden="true" data-ui className="grid grid-cols-3 gap-2">
+      {([['scale-110', 'night'], ['', 'linen'], ['logo', 'night'], ['-translate-y-[6%] scale-90', 'ember'], ['scale-125', 'night'], ['', 'linen']] as const).map(([art, backdrop], i) => (
         <div key={i} className="relative aspect-square overflow-hidden rounded-[var(--radius-sm)]">
           {art === 'logo' ? (
             <div className="grid size-full place-items-center bg-surface-2">

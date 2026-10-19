@@ -52,6 +52,9 @@
   --radius-sm: 0.625rem;
   --radius-md: 0.875rem;
   --radius-lg: 1.25rem;
+
+  /* strong ease-out for entrances (the same curve drives the 3D hero's entrance, src/lib/heroMotion.ts) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .dark,
@@ -711,3 +714,211 @@ html:not(.dark) {
 .markdown-body em { color: var(--fg-muted); font-style: italic; }
 .markdown-body a { color: var(--primary-ink); text-decoration: underline; text-underline-offset: 2px; }
 .markdown-body a:hover { color: var(--fg); }
+
+/* ==========================================================================
+   Public home page: a dark room lit in deep red, a 3D glass object, light type.
+   The page keeps this look whatever the app's theme (the root carries .theme-dark .home-site).
+   ========================================================================== */
+.home-site {
+  --bg: #0b0b0c;
+  --surface: #121214;
+  --surface-2: #19191c;
+  --surface-3: #222226;
+  --line: #26262b;
+  --line-strong: #3a3a41;
+  --fg: #f4f2ee;
+  --fg-muted: #bcb8b0;
+  --fg-faint: #95918a;
+  /* one accent: the red of the Algerian flag; the "ink" shade is the same red, light enough for text */
+  --primary: #d21034;
+  --primary-hover: #b80d2c;
+  --primary-ink: #ff7b88;
+  --primary-ink-soft: #ffa3ad;
+  --accent: #d21034;
+  --accent-hover: #b80d2c;
+  --accent-ink: #ff7b88;
+  --brand-gold-1: #ff7b88;
+  --brand-gold-2: #ffd0d5;
+}
+
+/* what the hero shows before (or instead of) the 3D canvas: the same room, without the object */
+.hero-backdrop {
+  /* sized on the screen's shorter side, like the 3D room, so a phone gets the same corners */
+  background:
+    radial-gradient(circle 62vmin at 0% 0%, rgba(118, 10, 14, 0.62), transparent 100%),
+    radial-gradient(circle 54vmin at 100% 0%, rgba(118, 10, 14, 0.5), transparent 100%),
+    radial-gradient(circle 70vmin at 90% 100%, rgba(58, 58, 62, 0.32), transparent 100%),
+    #0b0b0c;
+}
+[dir="rtl"] .hero-backdrop {
+  transform: scaleX(-1);
+}
+
+@layer components {
+  .hero-title {
+    font-family: var(--font-sans);
+    font-weight: 300;
+    font-size: clamp(3.1rem, 0.6rem + 6.4vw, 7.5rem);
+    line-height: 0.93;
+    letter-spacing: -0.045em;
+    max-width: 10.5ch;
+    text-wrap: balance;
+  }
+  [dir="rtl"] .hero-title {
+    font-family: var(--font-arabic);
+    font-weight: 400;
+    font-size: clamp(2.6rem, 1.2rem + 5vw, 6rem);
+    line-height: 1.15;
+    letter-spacing: 0;
+    max-width: 9ch;
+  }
+  .hero-stat {
+    display: block;
+    font-weight: 300;
+    font-size: clamp(2.5rem, 1.5rem + 2.6vw, 4.5rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .home-display {
+    font-family: var(--font-sans);
+    font-weight: 300;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+    text-wrap: balance;
+  }
+  [dir="rtl"] .home-display {
+    font-family: var(--font-arabic);
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.22;
+  }
+
+  /* the white pill with its round dark arrow */
+  .pill-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.875rem;
+    min-height: 3.5rem;
+    padding-block: 0.5rem;
+    padding-inline: 1.5rem 0.5rem;
+    border-radius: 999px;
+    background: #f4f2ee;
+    color: #0b0b0c;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: transform 160ms var(--ease-out), background-color 200ms ease;
+  }
+  .pill-cta-dot {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    background: #0b0b0c;
+    color: #f4f2ee;
+    transition: transform 250ms var(--ease-out);
+  }
+  .pill-cta:active {
+    transform: scale(0.97);
+  }
+  .pill-cta:focus-visible {
+    outline: 2px solid #f4f2ee;
+    outline-offset: 3px;
+  }
+
+  /* language pills and the round menu button of the home header */
+  .pill-option {
+    display: inline-grid;
+    place-items: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding-inline: 0.625rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: color-mix(in oklab, var(--fg) 62%, transparent);
+    transition: color 200ms ease, background-color 200ms ease, box-shadow 200ms ease, transform 160ms var(--ease-out);
+  }
+  .pill-option[aria-pressed="true"] {
+    color: var(--fg);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--fg) 55%, transparent);
+  }
+  .pill-option:active {
+    transform: scale(0.95);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .pill-cta:hover {
+      background: #ffffff;
+    }
+    .pill-cta:hover .pill-cta-dot {
+      transform: rotate(45deg);
+    }
+    [dir="rtl"] .pill-cta:hover .pill-cta-dot {
+      transform: rotate(-45deg);
+    }
+    .pill-option:hover {
+      color: var(--fg);
+      background: color-mix(in oklab, var(--fg) 8%, transparent);
+    }
+  }
+}
+
+/* entrances: each part rises a little and fades in, in turn (--rise-delay); none for reduced motion */
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+.hero-rise {
+  animation: hero-rise 900ms var(--ease-out) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.menu-in {
+  animation: menu-in 260ms var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise,
+  .menu-in {
+    animation: none;
+  }
+}
+
+/* the hero's 3D canvas (created by HeroCanvas.tsx): fades in over the backdrop once its first frame is drawn */
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1000ms var(--ease-out);
+}
+.hero-canvas[data-live="true"] {
+  opacity: 1;
+}
+
+/* section entrances (useReveal.ts): parts that start below the screen wait here, then rise in, staggered */
+[data-reveal] {
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+[data-reveal-pending] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal-pending] {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* the home page's buttons are flat: no inner highlight, no coloured glow */
+.home-site .btn-dz-primary {
+  box-shadow: none;
+}

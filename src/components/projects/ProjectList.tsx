@@ -12,9 +12,11 @@ import { EmptyState, Segmented, Skeleton, StatusChip } from '../ui/primitives';
 import { outputLabel } from './labels';
 import '../../i18n/campaigns';
 
-export function ProjectCard({ project }: { project: ProjectSummary }) {
+/** `headingLevel`: 3 under a section heading (the dashboard), 2 when the cards are the page's own list. */
+export function ProjectCard({ project, headingLevel = 3 }: { project: ProjectSummary; headingLevel?: 2 | 3 }) {
   const { t, language } = useLanguage();
   const kinds = OUTPUT_KINDS.filter((k) => k !== 'meta_campaign');
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
     <Link
       to={projectPath(project.id)}
@@ -33,7 +35,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         )}
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="truncate text-[15px] font-semibold text-fg">{project.name}</h3>
+        <Heading className="truncate text-[15px] font-semibold text-fg">{project.name}</Heading>
         {project.productName && project.productName !== project.name && <p className="mt-0.5 truncate text-[13px] text-fg-muted">{project.productName}</p>}
         <div className="mt-3 flex flex-wrap gap-1.5">
           {kinds.map((kind) => (
@@ -130,7 +132,7 @@ export default function ProjectList() {
         )
       ) : (
         <div className={cn('grid gap-5 sm:grid-cols-2 xl:grid-cols-3')}>
-          {shown.map((p) => <ProjectCard key={p.id} project={p} />)}
+          {shown.map((p) => <ProjectCard key={p.id} project={p} headingLevel={2} />)}
         </div>
       )}
     </div>
