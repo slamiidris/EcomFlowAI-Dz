@@ -32,7 +32,9 @@ for (const entry of readdirSync(distDir)) {
 // 3. Bundle the API server into a single self-contained CJS file
 execSync(
   `npx esbuild api/index.ts --bundle --platform=node --format=cjs ` +
-    `--external:pg-native --external:*.node ` +
+    // vite is only imported by the local dev server (server.ts, non-production). Bundling it added
+    // ~4 MB and ~75 ms to every serverless cold start.
+    `--external:pg-native --external:*.node --external:vite ` +
     `--outfile=${join(funcDir, "index.cjs")}`,
   { cwd: root, stdio: "inherit" }
 );
@@ -54,6 +56,9 @@ writeFileSync(
     {
       version: 3,
       routes: [
+        // Build output in /assets has content-hashed file names, so it can be cached forever.
+        { src: "/assets/(.*)", headers: { "cache-control": "public, max-age=31536000, immutable" }, continue: true },
+        { src: "/(favicon\\.png|apple-touch-icon\\.png)", headers: { "cache-control": "public, max-age=86400" }, continue: true },
         // Serve static files first; only apply the routes below on a miss.
         { handle: "filesystem" },
         { src: "/api/(.*)", dest: "/api" },

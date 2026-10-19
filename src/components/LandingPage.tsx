@@ -1,692 +1,399 @@
-import { Fragment, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Zap, ArrowRight, ArrowLeft, Lock, LayoutTemplate, Clapperboard, Palette, Sparkles, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { PlanId } from '../context/AuthContext';
-import { PLAN_EMOJI, buildPlans, usePricing } from '../lib/pricing';
-import { useLanguage, Language } from '../context/LanguageContext';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  ArrowRight, Check, Clapperboard, FolderOpen, Languages, LayoutTemplate, Megaphone, Menu, Palette, ShieldCheck, Wallet, X,
+  type LucideIcon,
+} from 'lucide-react';
+import type { PlanId } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { usePricing } from '../lib/pricing';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
+import { configApi } from '../services/api';
+import { BrandLogo } from './BrandMark';
 import LanguageSwitcher from './LanguageSwitcher';
-import { cn } from '../lib/utils';
-import ecomflowLogo from '../images/EcomFlow.png';
-import heroPhoto from '../images/photo.png';
-import workPhoto from '../images/work.png';
+import ThemeToggle from './ThemeToggle';
+import HeroVisual from './home/HeroVisual';
+import HomePricing from './home/HomePricing';
+import { AdsVisual, BrandVisual, LandingVisual, LibraryVisual, MetaVisual, VideoVisual } from './home/StudioVisuals';
+import '../i18n/home';
 
-// Market-pulse ticker content — capability phrases, no made-up stats or products.
-const TICKERS: Record<Language, string[]> = {
-  en: [
-    'AI Landing Pages — Built to convert',
-    'Ad Creatives — Ready to launch',
-    'Marketing Videos — From your product',
-    'Product Analysis — Angles & audience',
-    'Campaign Copy — Hooks that sell',
-    'Launch-Ready Assets — In minutes',
-  ],
-  ar: [
-    'صفحات هبوط بالذكاء الاصطناعي — مصممة للتحويل',
-    'تصاميم إعلانية — جاهزة للإطلاق',
-    'فيديوهات تسويقية — من منتجك',
-    'تحليل المنتج — الزوايا والجمهور',
-    'نصوص إعلانية — تجذب الزبون',
-    'محتوى جاهز للإطلاق — في دقائق',
-  ],
-  fr: [
-    'Landing Pages IA — Conçues pour convertir',
-    'Créations publicitaires — Prêtes à lancer',
-    'Vidéos marketing — À partir de ton produit',
-    'Analyse produit — Angles & audience',
-    'Textes publicitaires — Des hooks qui vendent',
-    'Contenus prêts — En quelques minutes',
-  ],
-};
+/** Is Meta publishing set up on this site? The page only talks about it then. */
+function useMetaPublishing(): boolean {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    configApi.get().then((c) => alive && setEnabled(Boolean(c?.metaPublishing))).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  return enabled;
+}
 
-// Product → campaign pipeline shown inside the dashboard mockup.
-const PIPELINE: Record<Language, string[]> = {
-  en: ['Upload', 'Analyze', 'Landing', 'Creatives', 'Video', 'Launch'],
-  ar: ['ارفع', 'حلّل', 'هبوط', 'إعلانات', 'فيديو', 'أطلق'],
-  fr: ['Importer', 'Analyser', 'Landing', 'Créas', 'Vidéo', 'Lancer'],
-};
+function SiteHeader() {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const links = [
+    { href: '#workflow', label: t('homeNavHow', 'Comment ça marche') },
+    { href: '#studios', label: t('homeNavStudios', 'Studios') },
+    { href: '#pricing', label: t('homeNavPricing', 'Tarifs') },
+    { href: '#faq', label: t('homeNavFaq', 'Questions fréquentes') },
+  ];
 
-const ACTIVITY: Record<Language, { type: string; title: string; time: string }[]> = {
-  en: [
-    { type: '⚡', title: 'Landing Page · Skincare Serum', time: '2h ago' },
-    { type: '🎨', title: 'Ad Creative · Coffee Maker', time: 'yesterday' },
-    { type: '🎬', title: 'Marketing Video · Sneakers', time: '3d ago' },
-  ],
-  ar: [
-    { type: '⚡', title: 'صفحة هبوط · سيروم العناية', time: 'قبل ساعتين' },
-    { type: '🎨', title: 'إعلان · آلة القهوة', time: 'أمس' },
-    { type: '🎬', title: 'فيديو تسويقي · حذاء رياضي', time: 'قبل 3 أيام' },
-  ],
-  fr: [
-    { type: '⚡', title: 'Landing Page · Sérum Visage', time: 'il y a 2h' },
-    { type: '🎨', title: 'Créatif · Machine à Café', time: 'hier' },
-    { type: '🎬', title: 'Vidéo Marketing · Sneakers', time: 'il y a 3j' },
-  ],
-};
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
-const FEATURES = [
-  { icon: LayoutTemplate, color: 'text-dz-gold', titleKey: 'lpFeat1Title', descKey: 'lpFeat1Desc' },
-  { icon: Palette, color: 'text-dz-amber', titleKey: 'lpFeat2Title', descKey: 'lpFeat2Desc' },
-  { icon: Clapperboard, color: 'text-dz-emerald', titleKey: 'lpFeat3Title', descKey: 'lpFeat3Desc' },
-  { icon: Sparkles, color: 'text-dz-dinar', titleKey: 'lpFeat4Title', descKey: 'lpFeat4Desc' },
-];
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-bg/95">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
+        <Link to="/" className="shrink-0" aria-label="EcomFlow AI">
+          <BrandLogo />
+        </Link>
+        <nav aria-label={t('homeNavLabel', 'Sections')} className="ms-6 hidden items-center gap-1 lg:flex">
+          {links.map((l) => (
+            <a key={l.href} href={l.href} className="rounded-[var(--radius-sm)] px-3 py-1.5 text-[13px] font-medium text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg">
+              {l.label}
+            </a>
+          ))}
+        </nav>
+        <div className="ms-auto flex items-center gap-1.5 sm:gap-2">
+          <LanguageSwitcher />
+          <ThemeToggle className="hidden sm:grid" />
+          <Link to="/login" className="hidden whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-[13px] font-medium text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg sm:inline-flex">
+            {t('lpNavLogin', 'Se connecter')}
+          </Link>
+          <Link to="/register" className="btn-dz-primary hidden !min-h-9 whitespace-nowrap !px-4 !py-1.5 !text-[13px] sm:inline-flex">
+            {t('lpNavGetStarted', 'Créer un compte')}
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls="home-menu"
+            aria-label={open ? t('homeMenuClose', 'Fermer le menu') : t('homeMenuOpen', 'Ouvrir le menu')}
+            className="grid size-10 place-items-center rounded-[var(--radius-sm)] text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg lg:hidden"
+          >
+            {open ? <X size={19} /> : <Menu size={19} />}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <nav id="home-menu" aria-label={t('homeNavLabel', 'Sections')} className="border-t border-line bg-bg px-4 py-3 sm:px-6 lg:hidden">
+          <ul className="mx-auto max-w-7xl">
+            {links.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} onClick={() => setOpen(false)} className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3 text-[15px] font-medium text-fg hover:bg-surface-2">
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="mx-auto mt-2 flex max-w-7xl items-center gap-2 border-t border-line px-1 pt-3 sm:hidden">
+            <Link to="/register" className="btn-dz-primary flex-1">{t('lpNavGetStarted', 'Créer un compte')}</Link>
+            <Link to="/login" className="btn-dz-secondary flex-1">{t('lpNavLogin', 'Se connecter')}</Link>
+            <ThemeToggle />
+          </div>
+        </nav>
+      )}
+    </header>
+  );
+}
 
-const STEPS = [
-  { titleKey: 'lpStep1Title', descKey: 'lpStep1Desc' },
-  { titleKey: 'lpStep2Title', descKey: 'lpStep2Desc' },
-  { titleKey: 'lpStep3Title', descKey: 'lpStep3Desc' },
-  { titleKey: 'lpStep4Title', descKey: 'lpStep4Desc' },
-  { titleKey: 'lpStep5Title', descKey: 'lpStep5Desc' },
-];
+function SectionIntro({ eyebrow, title, id, children }: { eyebrow: string; title: string; id: string; children?: ReactNode }) {
+  return (
+    <div className="max-w-2xl">
+      <p className="eyebrow">{eyebrow}</p>
+      <h2 id={id} className="display-title mt-3 text-4xl text-fg sm:text-5xl">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function PointList({ points }: { points: string[] }) {
+  return (
+    <ul className="mt-6 space-y-2.5">
+      {points.map((p) => (
+        <li key={p} className="flex items-start gap-2.5 text-[14px] leading-relaxed text-fg">
+          <Check size={16} className="mt-0.5 shrink-0 text-primary-ink" />
+          {p}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+interface Studio { id: string; icon: LucideIcon; eyebrow: string; title: string; text: string; points: string[]; visual: ReactNode }
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { t, language, isRTL } = useLanguage();
-
-  // Prices + currency come from the server (admin-editable PlatformConfig).
+  const { t } = useLanguage();
+  useDocumentMeta({ title: t('metaTitleHome', "EcomFlow AI — Marketing e-commerce propulsé par l'IA"), description: t('metaDescHome') });
   const pricing = usePricing();
-  const plans = useMemo(() => buildPlans(pricing), [pricing]);
+  const metaPublishing = useMetaPublishing();
 
-  // Arabic typography: swap display/mono fonts for the Arabic typeface, drop latin tracking.
-  const display = language === 'ar' ? 'font-arabic' : 'font-display';
-  const label = language === 'ar' ? 'font-arabic tracking-normal' : 'font-mono';
-  const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
-
-  const handleSubscribe = (plan: PlanId) => {
-    // Remember the plan across the auth flow; the app opens the checkout after login.
-    sessionStorage.setItem('dz_plan_intent', plan);
+  const choosePlan = (plan: PlanId) => {
+    // remembered across sign-up: the app opens the checkout for this plan after the first login
+    try { sessionStorage.setItem('dz_plan_intent', plan); } catch { /* storage unavailable: the visitor picks the plan again later */ }
     navigate('/register');
   };
 
-  const scrollToId = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const tickerItems = TICKERS[language];
-  const pipelineSteps = PIPELINE[language];
-  const activityItems = ACTIVITY[language];
-
-  const showcaseItems = [
-    { src: workPhoto, titleKey: 'lpShowcaseCard1Title' as const },
+  const facts: { icon: LucideIcon; text: string }[] = [
+    { icon: Wallet, text: t('homeFactLocal', 'Paiement local ({currency})', { currency: pricing.currencyCode }) },
+    { icon: Languages, text: t('homeFactLangs', 'Arabe, français, anglais') },
+    { icon: ShieldCheck, text: t('homeFactControl', 'Rien n’est publié sans ton accord') },
   ];
-  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
+  const steps = [
+    { title: t('homeStep1Title', 'Le brief'), text: t('homeStep1Text', 'Ajoute jusqu’à 8 photos. L’IA peut remplir le nom, les avantages, le public et le ton à partir de la première.') },
+    { title: t('homeStep2Title', 'La génération'), text: t('homeStep2Text', 'Landing page, script vidéo et publicités partent du même brief et de ton identité de marque. Chacun peut être relancé seul.') },
+    { title: t('homeStep3Title', 'La retouche'), text: t('homeStep3Text', 'Modifie les textes, réordonne les sections, change de format. Chaque génération est gardée comme une version.') },
+    {
+      title: t('homeStep4Title', 'L’export'),
+      text: metaPublishing
+        ? t('homeStep4TextMeta', 'Télécharge tout, ou crée la campagne sur Facebook et Instagram : elle reste en pause jusqu’à ta confirmation.')
+        : t('homeStep4Text', 'Télécharge la page HTML, la vidéo, les visuels et les textes publicitaires en CSV.'),
+    },
+  ];
+  const studios: Studio[] = [
+    {
+      id: 'landing',
+      icon: LayoutTemplate,
+      eyebrow: t('menuLanding', 'Landing pages'),
+      title: t('homeLandingTitle', 'Une page de vente prête pour le paiement à la livraison'),
+      text: t('homeLandingText', 'Des textes écrits pour ton produit et ton public, et un formulaire de commande avec les 58 wilayas. Les commandes arrivent sur ton WhatsApp ou sur ton propre webhook.'),
+      points: [
+        t('homeLandingPoint1', 'Arabe et darija, français ou anglais'),
+        t('homeLandingPoint2', 'Sections à réécrire, réordonner ou retirer'),
+        t('homeLandingPoint3', 'Une page HTML autonome, à héberger où tu veux'),
+      ],
+      visual: <LandingVisual />,
+    },
+    {
+      id: 'video',
+      icon: Clapperboard,
+      eyebrow: t('menuVideo', 'Pubs vidéo'),
+      title: t('homeVideoTitle', 'Un script scène par scène, puis la vidéo'),
+      text: t('homeVideoText', 'L’IA écrit l’accroche, les scènes et le texte à l’écran. La vidéo est ensuite montée dans ton navigateur à partir de tes photos.'),
+      points: [
+        t('homeVideoPoint1', 'Formats 9:16, 4:5, 1:1 et 16:9'),
+        t('homeVideoPoint2', 'Export MP4 (ou WebM selon le navigateur), sans bande son'),
+        t('homeVideoPoint3', 'Plans vidéo générés par IA (Veo) en option, avec la facturation Google'),
+      ],
+      visual: <VideoVisual />,
+    },
+    {
+      id: 'ads',
+      icon: Megaphone,
+      eyebrow: t('menuAds', 'Publicités'),
+      title: t('homeAdsTitle', 'Des concepts publicitaires et leurs visuels'),
+      text: t('homeAdsText', 'Plusieurs angles, chacun avec son texte principal, son titre, sa description et son bouton d’action. Les visuels sont composés avec tes photos et tes couleurs.'),
+      points: [
+        t('homeAdsPoint1', 'Carré, portrait et story, avec zone de sécurité'),
+        t('homeAdsPoint2', 'Textes exportables en CSV'),
+        t('homeAdsPoint3', 'Visuels enregistrés dans ta bibliothèque'),
+      ],
+      visual: <AdsVisual />,
+    },
+  ];
+  const faqs = [
+    { q: t('homeFaq1Q', 'Faut-il savoir designer ou écrire des pubs ?'), a: t('homeFaq1A', 'Non. Tu fournis les photos et quelques informations, puis tu relis et ajustes ce que l’IA propose.') },
+    { q: t('homeFaq2Q', 'Quelle clé IA faut-il ?'), a: t('homeFaq2A', 'Une clé Gemini, créée gratuitement sur Google AI Studio. Elle est enregistrée chiffrée dans ton compte et n’est jamais réaffichée en entier.') },
+    {
+      q: t('homeFaq3Q', 'Mes publicités partent-elles toutes seules ?'),
+      a: metaPublishing
+        ? t('homeFaq3AMeta', 'Non. Tu télécharges tes contenus, ou tu crées la campagne depuis l’app : elle reste en pause tant que tu ne l’as pas activée.')
+        : t('homeFaq3A', 'Non. Tu télécharges tes contenus et tu les publies toi-même, quand tu veux.'),
+    },
+    { q: t('homeFaq4Q', 'Comment se passe le paiement ?'), a: t('homeFaq4A', 'Tu choisis un plan, tu paies avec l’un des moyens indiqués, puis tu envoies le justificatif depuis l’app. Un admin le vérifie et active ton accès.') },
+    { q: t('homeFaq5Q', 'Dans quelles langues ?'), a: t('homeFaq5A', 'L’interface et les contenus générés existent en arabe, en français et en anglais. Chaque campagne choisit sa propre langue.') },
+    { q: t('homeFaq6Q', 'Mes données sont-elles séparées de celles des autres ?'), a: t('homeFaq6A', 'Oui. Chaque campagne, fichier et connexion appartient à ton compte, et le serveur vérifie le propriétaire à chaque requête.') },
+  ];
 
   return (
-    <div className={cn('min-h-screen bg-dz-green text-white overflow-x-hidden', language === 'ar' && 'font-arabic')}>
-      {/* NAV — Linear/Vercel-inspired clean navbar */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.04] bg-dz-green/70 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 group">
-            <img src={ecomflowLogo} alt="EcomFlow AI" className="w-9 h-9 rounded-full object-cover shadow-[0_0_12px_rgba(212,164,76,0.1)] group-hover:shadow-[0_0_20px_rgba(212,164,76,0.2)] transition-all duration-300" />
-            <span className="font-display font-bold text-[15px] tracking-[-0.01em]">
-              <span className="text-white">EcomFlow </span><span className="brand-shimmer">AI</span>
-            </span>
-          </a>
+    <div className="min-h-dvh overflow-x-clip bg-bg text-fg">
+      <SiteHeader />
 
-          {/* Center nav — desktop only */}
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { label: t('lpNavFeatures'), href: '#features' },
-              { label: t('lpNavHow'), href: '#how-it-works' },
-              { label: t('lpNavShowcase'), href: '#showcase' },
-              { label: t('lpNavPricing'), href: '#pricing' },
-            ].map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="px-3 py-1.5 text-[13px] text-white/40 hover:text-white rounded-lg hover:bg-white/[0.04] transition-all"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-1">
-            <LanguageSwitcher />
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="px-3 py-2 text-[13px] font-medium text-white/40 hover:text-white rounded-lg hover:bg-white/[0.04] transition-all cursor-pointer"
-            >
-              {t('lpNavLogin')}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="ml-1 px-4 py-2 text-[13px] font-semibold bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] hover:border-white/[0.15] rounded-lg text-white transition-all cursor-pointer"
-            >
-              {t('lpNavGetStarted')}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)]" />
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-dz-emerald/[0.06] blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute top-40 left-10 w-72 h-72 bg-dz-gold/[0.05] blur-[100px] rounded-full pointer-events-none" />
-        <div className="absolute top-64 right-10 w-72 h-72 bg-dz-amber/[0.04] blur-[100px] rounded-full pointer-events-none" />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
-          {/* Split hero: Image left, Text right */}
-          <div className={cn(
-            'flex flex-col items-center gap-12 lg:gap-16',
-            isRTL ? 'lg:flex-row-reverse' : 'lg:flex-row'
-          )}>
-            {/* IMAGE COLUMN — Left */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.15 }}
-              className="relative w-full lg:w-[480px] shrink-0"
-            >
-              {/* Decorative glow */}
-              <div className="absolute -inset-8 bg-dz-gold/[0.06] blur-[80px] rounded-full pointer-events-none" />
-              <div className="absolute -inset-4 bg-dz-emerald/[0.04] blur-[60px] rounded-full pointer-events-none" />
-
-              {/* Decorative ring */}
-              <div className="absolute -top-6 -right-6 w-32 h-32 border border-dz-gold/10 rounded-full pointer-events-none" />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 border border-dz-emerald/10 rounded-full pointer-events-none" />
-
-              {/* Floating dots */}
-              <div className="absolute top-8 -left-3 w-2 h-2 bg-dz-gold/30 rounded-full animate-float" />
-              <div className="absolute bottom-12 -right-2 w-1.5 h-1.5 bg-dz-emerald/40 rounded-full animate-float" style={{ animationDelay: '1.5s' }} />
-              <div className="absolute top-1/2 -right-5 w-1 h-1 bg-dz-amber/30 rounded-full animate-float" style={{ animationDelay: '3s' }} />
-
-              {/* Image frame */}
-              <div className="relative rounded-3xl border border-white/[0.08] bg-white/[0.02] p-3 shadow-[0_20px_80px_rgba(0,0,0,0.5)] backdrop-blur-sm group">
-                <div className="relative rounded-2xl overflow-hidden">
-                  <img
-                    src={heroPhoto}
-                    alt="EcomFlow AI — Product Analysis"
-                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                  />
-                  {/* Subtle overlay gradient */}
-                  <div className="absolute inset-0 bg-linear-to-t from-dz-green/20 via-transparent to-transparent pointer-events-none" />
-                </div>
-                {/* Frame glow on hover */}
-                <div className="absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/[0.05] group-hover:ring-dz-gold/20 transition-all duration-500 pointer-events-none" />
-              </div>
-            </motion.div>
-
-            {/* TEXT COLUMN — Right */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.25 }}
-              className="flex-1 text-center lg:text-right"
-            >
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] border border-white/[0.08] px-3.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] text-white/50">
-                <Zap size={11} /> {t('lpBadge')}
-              </span>
-
-              <h1 className={cn(
-                'mt-8 text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1]',
-                language === 'ar' ? 'font-arabic' : 'font-display tracking-[-0.04em]'
-              )}>
-                {t('lpHeadline')}
+      <main>
+        <section aria-labelledby="home-hero" className="relative">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_88%_0%,color-mix(in_oklab,var(--primary)_14%,transparent),transparent_70%)] rtl:bg-[radial-gradient(50%_60%_at_12%_0%,color-mix(in_oklab,var(--primary)_14%,transparent),transparent_70%)]"
+          />
+          <div className="relative mx-auto grid max-w-7xl gap-14 px-4 pb-24 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-12 lg:gap-10 lg:pb-32 lg:pt-24">
+            <div className="lg:col-span-5 lg:pt-8">
+              <p className="eyebrow">{t('homeHeroEyebrow', 'Pour les vendeurs e-commerce en Algérie')}</p>
+              <h1 id="home-hero" className="display-title mt-5 text-[clamp(2.75rem,1.9rem+3vw,4.25rem)] text-fg rtl:text-[clamp(2.4rem,1.6rem+2.4vw,3.6rem)]">
+                {t('homeHeroTitleA', 'Une photo produit.')}
                 <br />
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-dz-gold via-dz-emerald to-dz-dinar">
-                  {t('lpHeadlineHighlight')}
-                </span>
+                <em className="text-primary-ink rtl:not-italic">{t('homeHeroTitleB', 'Toute la campagne.')}</em>
               </h1>
-
-              <p className="text-white/45 max-w-xl text-base sm:text-lg mt-6 leading-relaxed lg:mr-0">
-                {t('lpDesc').split('EcomFlow AI').map((part, i, arr) => (
-                  i < arr.length - 1
-                    ? <Fragment key={i}>{part}<span className="font-semibold brand-shimmer">EcomFlow AI</span></Fragment>
-                    : <Fragment key={i}>{part}</Fragment>
-                ))}
+              <p className="mt-6 max-w-[34rem] text-[17px] leading-relaxed text-fg-muted">
+                {t('homeHeroLead', 'Dépose les photos de ton produit. EcomFlow AI écrit la landing page, le script vidéo et les publicités, aux couleurs de ta marque, en arabe, en français ou en anglais.')}
               </p>
-
-              <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-                <button
-                  type="button"
-                  onClick={() => navigate('/register')}
-                  className="btn-dz-primary group w-full sm:w-auto"
-                >
-                  {t('lpCtaPrimary')}
-                  <ArrowIcon size={16} className={cn('opacity-60 transition-transform group-hover:translate-x-0.5', isRTL && 'group-hover:-translate-x-0.5')} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToId('how-it-works')}
-                  className="text-[13px] text-white/40 hover:text-white transition-colors cursor-pointer"
-                >
-                  {t('lpCtaSecondary')}
-                </button>
+              <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+                <Link to="/register" className="btn-dz-primary group !px-6">
+                  {t('homeCtaStart', 'Créer mon compte')}
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" />
+                </Link>
+                <a href="#workflow" className="text-sm font-medium text-fg-muted underline-offset-4 transition-colors hover:text-fg hover:underline">
+                  {t('homeCtaHow', 'Voir le parcours')}
+                </a>
               </div>
-
-              <p className={cn('flex items-center gap-1.5 text-[11px] text-white/25 mt-5', 'justify-center lg:justify-start', label)}>
-                {t('lpTrust')}
-              </p>
-
-              {/* Brand identity callout */}
-              <div className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-full bg-dz-emerald/[0.06] border border-dz-emerald/[0.12] backdrop-blur-sm">
-                <Sparkles size={13} className="text-dz-gold" />
-                <span className="text-[11px] text-white/40">Powered by</span>
-                <span className="text-[13px] font-bold brand-shimmer">EcomFlow AI</span>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* SHOWCASE — Single full-width work photo */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-16 mx-auto max-w-5xl group relative rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden cursor-pointer hover:border-dz-emerald/40 hover:shadow-[0_8px_60px_rgba(212,164,76,0.1)] transition-all duration-500"
-            id="showcase"
-            onClick={() => setPreviewIdx(0)}
-          >
-            {/* Browser chrome */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-white/[0.02]">
-              <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-rose-500/50" />
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500/50" />
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-              </div>
-              <div className="flex-1 flex justify-center">
-                <div className="px-3 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.05]">
-                  <span className="text-[8px] font-mono text-white/25">ecomflow.ai/landing</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Image */}
-            <div className="p-2">
-              <div className="relative rounded-xl overflow-hidden">
-                <img
-                  src={workPhoto}
-                  alt={t('lpShowcaseCard1Title')}
-                  loading="lazy"
-                  className="w-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.02]"
-                />
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-0 p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-                  <span className="text-[10px] font-mono text-dz-emerald uppercase tracking-wider">View Full Preview →</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Title bar */}
-            <div className="px-4 pb-3">
-              <p className={cn('text-[12px] font-semibold text-white/50 group-hover:text-white transition-colors', display)}>
-                {t('lpShowcaseCard1Title')}
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CAPABILITIES TICKER (signature) */}
-      <section className="border-y border-white/[0.06] bg-white/[0.015] py-3">
-        <div className="dz-ticker">
-          <div className="dz-ticker-track">
-            {[0, 1].map((dup) => (
-              <div key={dup} className="flex shrink-0 items-center" aria-hidden={dup === 1}>
-                {tickerItems.map((item, i) => (
-                  <span
-                    key={`${dup}-${i}`}
-                    className={cn('flex items-center gap-3 px-5 whitespace-nowrap text-[12px] text-white/30', label)}
-                  >
-                    <span className="text-dz-emerald">◈</span>
-                    {item}
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* VALUE STRIP */}
-      <section className="py-8 border-b border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-center gap-4 text-[13px] text-white/35">
-          <span className="text-dz-emerald">◈</span>
-          {t('lpStrip')}
-          <span className="text-dz-emerald">◈</span>
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section id="features" className="py-24 sm:py-32 max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-14">
-          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>{t('lpFeatLabel')}</p>
-          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
-            {t('lpFeatTitleA')}<span className="text-dz-emerald">{t('lpFeatTitleB')}</span>
-          </h2>
-          <p className="mt-3 text-white/45 text-sm max-w-xl mx-auto leading-relaxed">{t('lpFeatDesc')}</p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((f, i) => (
-            <motion.div
-              key={f.titleKey}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: (i % 4) * 0.08 }}
-              className="surface-card p-5 sm:p-6"
-            >
-              <div className={cn('w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4', f.color)}>
-                <f.icon size={20} />
-              </div>
-              <h3 className={cn('font-semibold text-[15px] text-white mb-1', display)}>{t(f.titleKey)}</h3>
-              <p className="text-[13px] text-white/45 leading-relaxed">{t(f.descKey)}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-24 sm:py-32 max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-14">
-          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>{t('lpHowLabel')}</p>
-          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>{t('lpHowTitle')}</h2>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {STEPS.map((s, i) => (
-            <motion.div
-              key={s.titleKey}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: (i % 5) * 0.08 }}
-              className="surface-card p-5 sm:p-6"
-            >
-              <div className="w-10 h-10 rounded-full bg-linear-to-br from-dz-gold to-dz-emerald text-black font-black flex items-center justify-center text-sm mb-4 shadow-[0_4px_16px_rgba(212,164,76,0.25)]">
-                {i + 1}
-              </div>
-              <h3 className={cn('font-semibold text-[15px] text-white mb-1', display)}>{t(s.titleKey)}</h3>
-              <p className="text-[13px] text-white/45 leading-relaxed">{t(s.descKey)}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* DASHBOARD MOCKUP — Platform preview (moved from hero) */}
-      <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-12">
-          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-emerald/70 mb-3', label)}>{t('lpNavShowcase')}</p>
-          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
-            {language === 'ar' ? 'تعرف على ' : 'See the '}
-            <span className="text-dz-emerald">{language === 'ar' ? 'المنصة' : 'Platform'}</span>
-          </h2>
-        </div>
-
-        <div className="relative isolate mx-auto max-w-5xl text-left">
-          <div className="relative rounded-2xl border border-white/[0.08] bg-dz-card shadow-[0_25px_100px_rgba(0,0,0,0.6)] overflow-hidden">
-            {/* Browser chrome */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-              </div>
-              <div className="flex-1 flex justify-center">
-                <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                  <Lock size={9} className="text-white/25" />
-                  <span className="text-[10px] font-mono text-white/30">{t('lpMockUrl')}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Dashboard body */}
-            <div className="flex min-h-[320px] sm:min-h-[380px]">
-              {/* Sidebar */}
-              <div className="hidden sm:flex flex-col w-14 border-r border-white/[0.06] bg-white/[0.015] py-3 items-center gap-1.5">
-                {[
-                  { active: true, icon: '📊' },
-                  { active: false, icon: '📦' },
-                  { active: false, icon: '🤖' },
-                  { active: false, icon: '⚡' },
-                  { active: false, icon: '🎨' },
-                  { active: false, icon: '🎬' },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all',
-                      item.active
-                        ? 'bg-dz-emerald/15 border border-dz-emerald/25'
-                        : 'hover:bg-white/[0.04]'
-                    )}
-                  >
-                    {item.icon}
-                  </div>
-                ))}
-              </div>
-
-              {/* Main content */}
-              <div className="flex-1 p-4 sm:p-6">
-                {/* KPI Row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                  {[
-                    { labelKey: 'lpKpiProducts', value: '8', delta: '+2', icon: '📦' },
-                    { labelKey: 'lpKpiAnalysis', value: '12', delta: '+4', icon: '🤖' },
-                    { labelKey: 'lpKpiLanding', value: '6', delta: '+1', icon: '⚡' },
-                    { labelKey: 'lpKpiCampaigns', value: '3', delta: '+1', icon: '🚀' },
-                  ].map((kpi) => (
-                    <div key={kpi.labelKey} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-xs">{kpi.icon}</span>
-                        <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t(kpi.labelKey)}</span>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="font-display text-lg sm:text-xl font-bold text-white">{kpi.value}</span>
-                        <span className="text-[9px] font-bold text-emerald-400">{kpi.delta}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pipeline visualization */}
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpPipelineLabel')}</span>
-                    <div className="flex-1 h-px bg-white/[0.04]" />
-                  </div>
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    {pipelineSteps.map((step, i) => (
-                      <div key={step} className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className={cn(
-                          'w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold',
-                          i <= 2
-                            ? 'bg-dz-emerald/20 text-dz-emerald border border-dz-emerald/30'
-                            : 'bg-white/[0.04] text-white/30 border border-white/[0.06]'
-                        )}>
-                          {i + 1}
-                        </div>
-                        <span className={cn(
-                          'text-[10px] truncate hidden sm:inline',
-                          i <= 2 ? 'text-white/70' : 'text-white/25'
-                        )}>
-                          {step}
-                        </span>
-                        {i < 5 && <div className={cn('w-4 h-px shrink-0', i < 2 ? 'bg-dz-emerald/30' : 'bg-white/[0.06]')} />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Mini chart + activity */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Chart area */}
-                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                    <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpChartLabel')}</span>
-                    <div className="flex items-end gap-1.5 mt-2 h-12">
-                      {[35, 50, 42, 65, 55, 78, 70, 85, 60, 92, 75, 88].map((h, i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            'flex-1 rounded-sm transition-all',
-                            i >= 10 ? 'bg-dz-emerald/40' : 'bg-dz-emerald/15'
-                          )}
-                          style={{ height: `${h}%` }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Recent activity */}
-                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                    <span className={cn('text-[9px] uppercase tracking-wider text-white/30', label)}>{t('lpActivityLabel')}</span>
-                    <div className="space-y-2 mt-2">
-                      {activityItems.map((item, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="text-[10px]">{item.type}</span>
-                          <span className="text-[10px] text-white/50 truncate flex-1">{item.title}</span>
-                          <span className={cn('text-[8px] text-white/20', label)}>{item.time}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Glow behind mockup */}
-          <div className="absolute inset-0 -z-10 mx-auto max-w-5xl h-full">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-dz-emerald/[0.03] blur-[100px] rounded-full" />
-            <div className="absolute top-1/3 right-0 w-1/2 h-1/2 bg-dz-gold/[0.02] blur-[80px] rounded-full" />
-          </div>
-        </div>
-      </section>
-
-      {/* SHOWCASE PREVIEW MODAL */}
-      {previewIdx !== null && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-          onClick={() => setPreviewIdx(null)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full max-w-4xl max-h-[90vh] bg-dz-card rounded-2xl border border-white/10 overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
-              <p className={cn('text-sm font-semibold text-white', display)}>
-                {t(showcaseItems[previewIdx].titleKey)}
-              </p>
-              <button
-                onClick={() => setPreviewIdx(null)}
-                className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1">
-              <img
-                src={showcaseItems[previewIdx].src}
-                alt={t(showcaseItems[previewIdx].titleKey)}
-                className="w-full"
-              />
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* PRICING */}
-      <section id="pricing" className="py-24 sm:py-32 max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-14">
-          <p className={cn('text-[10px] uppercase tracking-[0.3em] text-dz-dinar/80 mb-3', label)}>{t('lpPriceLabel')}</p>
-          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
-            {t('lpPriceTitleA')}<span className="text-dz-dinar">{t('lpPriceTitleB')}</span>
-          </h2>
-          <p className="mt-3 text-white/45 text-sm">{t('lpPriceSub')}</p>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-3 items-stretch">
-          {plans.map((p) => (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4 }}
-              className={cn(
-                'surface-card relative p-6 flex flex-col',
-                p.popular && 'border-dz-emerald/60 ring-4 ring-dz-emerald/10 lg:-mt-4 lg:mb-4'
-              )}
-            >
-              {p.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest bg-linear-to-r from-dz-gold to-dz-emerald text-black px-3 py-1 rounded-full whitespace-nowrap">
-                  ⭐ {t('lpPricePopular')}
-                </span>
-              )}
-
-              <p className={cn('text-[10px] uppercase tracking-widest text-white/40', label)}>{p.tagline}</p>
-              <h3 className={cn('text-xl font-bold mt-1.5 flex items-center gap-2', display)}>
-                <span>{PLAN_EMOJI[p.id]}</span> {p.label}
-              </h3>
-
-              <div className="mt-4 mb-1">
-                <span className="font-display font-bold text-3xl text-dz-dinar">{p.price}</span>
-                <span className="ml-2 text-sm text-white/45 font-mono">{p.note}</span>
-              </div>
-              <p className="text-[12px] text-white/45 mb-5">{p.per}</p>
-
-              <ul className="space-y-2 mb-7 text-[13px] text-white/45 flex-1">
-                {[t('lpPriceFeature1'), t('lpPriceFeature2'), t('lpPriceFeature3')].map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <span className="text-dz-emerald mt-0.5">✓</span> {f}
+              <ul className="mt-12 flex flex-wrap gap-x-6 gap-y-3 border-t border-line pt-6 text-[13px] text-fg-muted">
+                {facts.map((f) => (
+                  <li key={f.text} className="flex items-center gap-2">
+                    <f.icon size={15} className="shrink-0 text-primary-ink" />
+                    {f.text}
                   </li>
                 ))}
               </ul>
+            </div>
+            <div className="lg:col-span-7">
+              <HeroVisual />
+            </div>
+          </div>
+        </section>
 
-              <button
-                type="button"
-                onClick={() => handleSubscribe(p.id)}
-                className={cn('w-full', p.popular ? 'btn-dz-primary' : 'btn-dz-secondary')}
-              >
-                {t('lpPriceCta')}
-              </button>
-            </motion.div>
-          ))}
-        </div>
+        <section id="workflow" aria-labelledby="home-flow" className="scroll-mt-20 border-t border-line">
+          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-12 lg:py-32">
+            <div className="lg:col-span-5">
+              <div className="lg:sticky lg:top-28">
+                <SectionIntro eyebrow={t('homeFlowEyebrow', 'Le parcours')} title={t('homeFlowTitle', 'Du brief à la mise en ligne, au même endroit.')} id="home-flow">
+                  <p className="mt-5 max-w-md text-[15px] leading-relaxed text-fg-muted">
+                    {t('homeFlowIntro', 'Chaque campagne garde ses photos, son brief et toutes les versions de ses contenus : tu peux régénérer, retoucher ou revenir en arrière à tout moment.')}
+                  </p>
+                </SectionIntro>
+              </div>
+            </div>
+            <ol className="lg:col-span-7">
+              {steps.map((s, i) => (
+                <li key={s.title} className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-5 border-t border-line py-8 first:border-t-0 first:pt-0 sm:grid-cols-[5rem_minmax(0,1fr)]">
+                  <span className="display-title text-5xl leading-none text-primary-ink" dir="ltr">{String(i + 1).padStart(2, '0')}</span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-fg">{s.title}</h3>
+                    <p className="mt-2 max-w-lg text-[15px] leading-relaxed text-fg-muted">{s.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
 
-        <p className={cn('text-center text-[11px] text-white/30 mt-8', label)}>
-          {t('lpPriceNote')}
-        </p>
-      </section>
+        <section id="studios" aria-labelledby="home-studios" className="scroll-mt-20 border-y border-line bg-surface">
+          <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:py-32">
+            <SectionIntro eyebrow={t('homeStudiosEyebrow', 'Les studios')} title={t('homeStudiosTitle', 'Trois studios, une seule marque.')} id="home-studios" />
+            <div className="mt-16 space-y-24 lg:mt-20 lg:space-y-32">
+              {studios.map((s, i) => (
+                <article key={s.id} aria-labelledby={`studio-${s.id}`} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+                  <div className={i % 2 === 1 ? 'lg:order-2' : undefined}>
+                    <p className="inline-flex items-center gap-2 text-[13px] font-medium text-primary-ink">
+                      <s.icon size={15} /> {s.eyebrow}
+                    </p>
+                    <h3 id={`studio-${s.id}`} className="mt-3 text-balance text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{s.title}</h3>
+                    <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-fg-muted">{s.text}</p>
+                    <PointList points={s.points} />
+                  </div>
+                  <div className="rounded-[var(--radius-lg)] border border-line bg-bg p-6 sm:p-10">{s.visual}</div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* CTA BAND */}
-      <section className="relative overflow-hidden py-20 sm:py-24">
-        <div className="absolute inset-0 bg-dz-emerald/[0.04] blur-[100px]" />
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className={cn('text-3xl sm:text-4xl font-bold tracking-tight', display)}>
-            {t('lpCtaTitle')}
-          </h2>
-          <p className="mt-4 text-white/45 text-base leading-relaxed">
-            {t('lpCtaDesc')}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/register')}
-            className="btn-dz-primary mx-auto mt-8"
-          >
-            {t('lpCtaButton')}
-          </button>
-        </div>
-      </section>
+        <section aria-label={t('homeBrandTitle', 'Ton identité de marque, appliquée partout')} className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
+          <div className="grid gap-5 lg:grid-cols-12">
+            <article className="ui-card grain overflow-hidden p-7 sm:p-9 lg:col-span-7">
+              <Palette size={20} className="text-primary-ink" aria-hidden="true" />
+              <h3 className="mt-4 text-2xl font-semibold tracking-tight text-fg">{t('homeBrandTitle', 'Ton identité de marque, appliquée partout')}</h3>
+              <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-fg-muted">
+                {t('homeBrandText', 'Logo, couleurs, polices, ton et public : l’IA les reprend dans chaque landing page, chaque script et chaque publicité.')}
+              </p>
+              <div className="mt-9"><BrandVisual /></div>
+            </article>
+            <article className="ui-card p-7 sm:p-9 lg:col-span-5">
+              <FolderOpen size={20} className="text-primary-ink" aria-hidden="true" />
+              <h3 className="mt-4 text-2xl font-semibold tracking-tight text-fg">{t('homeLibraryTitle', 'Tous tes fichiers au même endroit')}</h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-fg-muted">
+                {t('homeLibraryText', 'Photos produit, logos et visuels générés, rangés par campagne et prêts à être réutilisés.')}
+              </p>
+              <div className="mt-8"><LibraryVisual /></div>
+            </article>
+          </div>
+        </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-white/[0.04] py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/30">
-          <p className={label}>{t('lpFooter').split('EcomFlow AI').map((part, i, arr) => (
-            i < arr.length - 1
-              ? <Fragment key={i}>{part}<span className="font-bold brand-shimmer">EcomFlow AI</span></Fragment>
-              : <Fragment key={i}>{part}</Fragment>
-          ))}</p>
-          <p className={cn('text-dz-emerald/70', label)}>{t('lpFooterMeta')}</p>
+        {metaPublishing && (
+          <section aria-labelledby="home-meta" className="border-t border-line">
+            <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-32">
+              <div>
+                <SectionIntro eyebrow={t('homeMetaEyebrow', 'Publication Meta')} title={t('homeMetaTitle', 'Publie sur Facebook et Instagram sans perdre la main')} id="home-meta">
+                  <p className="mt-5 text-[15px] leading-relaxed text-fg-muted">
+                    {t('homeMetaText', 'Connecte ton compte publicitaire avec la connexion officielle de Meta. La campagne et ses annonces sont créées en pause : tu vérifies le budget, les dates et le ciblage avant d’activer.')}
+                  </p>
+                </SectionIntro>
+                <PointList
+                  points={[
+                    t('homeMetaPoint1', 'Connexion officielle, aucun mot de passe partagé'),
+                    t('homeMetaPoint2', 'Activation seulement après ta confirmation'),
+                    t('homeMetaPoint3', 'Statut et statistiques lus directement chez Meta'),
+                  ]}
+                />
+              </div>
+              <div className="rounded-[var(--radius-lg)] border border-line bg-surface-2 p-6 sm:p-10"><MetaVisual /></div>
+            </div>
+          </section>
+        )}
+
+        <HomePricing onChoose={choosePlan} />
+
+        <section id="faq" aria-labelledby="home-faq" className="scroll-mt-20 border-t border-line">
+          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-12 lg:py-32">
+            <h2 id="home-faq" className="display-title text-4xl text-fg sm:text-5xl lg:col-span-4">{t('homeNavFaq', 'Questions fréquentes')}</h2>
+            <dl className="grid gap-x-12 gap-y-10 sm:grid-cols-2 lg:col-span-8">
+              {faqs.map((f) => (
+                <div key={f.q}>
+                  <dt className="text-[15px] font-semibold text-fg">{f.q}</dt>
+                  <dd className="mt-2 text-[14px] leading-relaxed text-fg-muted">{f.a}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
+        <section aria-labelledby="home-final" className="px-4 pb-24 sm:px-6">
+          <div className="grain relative mx-auto max-w-7xl overflow-hidden rounded-[var(--radius-lg)] border border-line bg-surface px-6 py-14 sm:px-12 sm:py-20">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_90%_at_100%_100%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_70%)] rtl:bg-[radial-gradient(60%_90%_at_0%_100%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_70%)]"
+            />
+            <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <h2 id="home-final" className="display-title text-4xl text-fg sm:text-5xl">{t('homeFinalTitle', 'Ton prochain produit mérite une vraie campagne.')}</h2>
+                <p className="mt-4 text-[15px] leading-relaxed text-fg-muted">
+                  {t('homeFinalText', 'Crée ton compte, ajoute ta clé Gemini et lance ta première campagne à partir d’une photo.')}
+                </p>
+              </div>
+              <Link to="/register" className="btn-dz-primary group shrink-0 self-start !px-6 lg:self-auto">
+                {t('homeCtaStart', 'Créer mon compte')}
+                <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <BrandLogo />
+            <p className="mt-2 text-[13px] text-fg-muted">{t('homeFooterTagline', 'Campagnes e-commerce assistées par l’IA, pensées pour l’Algérie.')}</p>
+          </div>
+          <nav aria-label={t('legalFooterNav', 'Informations légales')} className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-fg-muted">
+            <Link to="/terms" className="transition-colors hover:text-fg">{t('legalTermsTitle', "Conditions d'utilisation")}</Link>
+            <Link to="/privacy" className="transition-colors hover:text-fg">{t('legalPrivacyTitle', 'Politique de confidentialité')}</Link>
+            <Link to="/login" className="transition-colors hover:text-fg">{t('lpNavLogin', 'Se connecter')}</Link>
+          </nav>
+          <p className="text-xs text-fg-faint">© {new Date().getFullYear()} EcomFlow AI</p>
         </div>
       </footer>
     </div>

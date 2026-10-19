@@ -1,6 +1,9 @@
 // All Gemini calls are server-proxied (POST /api/ai/generate) so the user's
 // API key never reaches the browser bundle. See getAI() below.
 
+import { translate } from '../i18n/runtime';
+import { unwrapSingleObject } from '../lib/aiJson';
+
 export const MODEL_NAME = "gemini-3-flash-preview";
 // Image generation model — separate model family (Gemini image), intentionally different.
 export const IMAGE_MODEL_NAME = "gemini-2.5-flash-image";
@@ -152,7 +155,7 @@ function repairTruncatedJSON(s: string): string {
 /**
  * Robustly parses JSON from AI responses, handling markdown blocks and common errors.
  */
-function safeParseJSON(text: string) {
+export function safeParseJSON(text: string) {
   if (!text) return null;
 
   // Let's first try to clean up code block wraps if present
@@ -321,10 +324,10 @@ async function proxyGenerate(params: {
       body: JSON.stringify(params),
     });
   } catch {
-    throw new Error("Impossible de joindre le serveur IA. Réessaie.");
+    throw new Error(translate('shAiServerUnreachable', 'Impossible de joindre le serveur IA. Réessaie.'));
   }
   if (!res.ok) {
-    let message = "Erreur IA. Réessaie.";
+    let message = translate('shAiError', 'Erreur IA. Réessaie.');
     try {
       const data = await res.json();
       if (data?.error) message = data.error;
@@ -471,7 +474,7 @@ export async function generateVideoAdScript(analysisContext: string, visualStyle
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -521,7 +524,7 @@ export async function analyzeProductFromImage(image: { data: string, mimeType: s
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -743,7 +746,7 @@ export async function generateLandingPageCopy(
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -807,7 +810,7 @@ export async function generateDarjaAds(analysisContext: string, platform: 'faceb
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -844,8 +847,28 @@ export async function generateProductPageOptimizations(analysisContext: string) 
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
+}
+
+/**
+ * An AI image for one landing-page section, made from the product photo so the product stays the same.
+ * Needs a Gemini key with billing; any failure is thrown (no stand-in picture), so the page never shows a fake image.
+ */
+export async function generateSectionImage(prompt: string, productPhoto?: string | null): Promise<string> {
+  const reference = productPhoto?.startsWith('data:image/')
+    ? { data: productPhoto.split(',')[1], mimeType: productPhoto.slice(5, productPhoto.indexOf(';')) }
+    : null;
+  const response = await getAI().models.generateContent({
+    model: IMAGE_MODEL_NAME,
+    contents: reference ? [{ inlineData: reference }, { text: prompt }] : prompt,
+  });
+  for (const candidate of response.candidates || []) {
+    for (const part of candidate.content?.parts || []) {
+      if (part.inlineData?.data) return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+    }
+  }
+  throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
 }
 
 export async function generateProductImage(productName: string, style: string = "lifestyle, clean lighting, professional photography", aspectRatio: string = "1:1") {
@@ -867,12 +890,12 @@ export async function generateProductImage(productName: string, style: string = 
           }
         }
       }
-      throw new Error("No image generated");
+      throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
     });
   } catch (e: any) {
-    // A 400 from the proxy is a definitive client-side rejection (e.g. no
-    // Gemini key configured) — surface it instead of silently falling back.
-    if (e?.status === 400) throw e;
+    // A 400 or 403 from the proxy is a definitive rejection (no Gemini key configured, or no active
+    // plan) — surface it instead of silently falling back.
+    if (e?.status === 400 || e?.status === 403) throw e;
     console.warn("Gemini Image generation failed, using fallback:", e);
     // Fallback using loremflickr with relevant keywords
     const keywords = `${productName.replace(/\s+/g, ',')},product,commercial`;
@@ -1117,7 +1140,7 @@ export async function generatePricingStrategy(productName: string, productCost: 
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -1251,7 +1274,7 @@ export async function suggestMarketingStrategy(productName: string, brand: strin
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -1327,7 +1350,7 @@ export async function analyzeProductAnglesFromImage(imageInput: { data: string, 
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -1386,7 +1409,7 @@ export async function completeProductAnalysisWithAngle(
       }
     });
     
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
 
@@ -1507,6 +1530,6 @@ export async function analyzeLandingPageImages(images: { data: string, mimeType:
       }
     });
 
-    return safeParseJSON(response.text || "{}");
+    return unwrapSingleObject(safeParseJSON(response.text || "{}"));
   });
 }
