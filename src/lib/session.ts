@@ -48,6 +48,9 @@ export function signValue(value: string): string {
   return crypto.createHmac("sha256", SESSION_SECRET).update(value).digest("base64url");
 }
 
+/** A signer bound to one purpose: a token signed for one use (a login state, a video job) never verifies for another. */
+export const purposeSigner = (purpose: string) => (value: string): string => signValue(`${purpose}:${value}`);
+
 /** Signs a session token. Unless the caller sets one, it expires with the cookie (30 days). */
 export function signSession(payload: SessionPayload): string {
   const stamped: SessionPayload = { ...payload, exp: payload.exp ?? Date.now() + SESSION_MAX_AGE_MS };

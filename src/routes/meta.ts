@@ -1,8 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../lib/prisma";
-import { parseCookies, requireAuth, signValue, type SessionPayload } from "../lib/session";
+import { parseCookies, purposeSigner, requireAuth, type SessionPayload } from "../lib/session";
 import { createPaidAccessGuard } from "../lib/planGuard";
 import { createRateLimiter } from "../lib/rateLimit";
+import { UUID, accountKey } from "../lib/routeHelpers";
 import { encryptSecret } from "../lib/crypto";
 import { connectionClient, markMetaExpired } from "../lib/metaAccount";
 import {
@@ -28,12 +29,11 @@ import {
 const router = Router();
 
 const NONCE_COOKIE = "dz_meta_nonce";
+const signState = purposeSigner("meta-oauth-state");
 const RETURN_COOKIE = "dz_meta_return";
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const META_ID = /^\d{5,25}$/;
 
-const userKey = (req: { user?: unknown; ip?: string }) => (req.user as SessionPayload | undefined)?.sub ?? req.ip ?? "anon";
-const metaLimiter = createRateLimiter({ windowMs: 60_000, max: 30, keyFn: userKey });
+const metaLimiter = createRateLimiter({ windowMs: 60_000, max: 30, keyFn: accountKey });
 const requirePaidAccess = createPaidAccessGuard((userId) =>
   prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true, planStatus: true, planExpiresAt: true } }),
 );
@@ -109,7 +109,7 @@ router.get("/api/meta/connect", requireAuth, (req, res) => {
   const back = safeReturn(req.query.return);
   const { config } = metaConfig();
   if (!config) return res.redirect(withParam(back, "meta", "unavailable"));
-  const { state, nonce } = createOAuthState(user.sub, signValue);
+  const { state, nonce } = createOAuthState(user.sub, signState);
   res.cookie(NONCE_COOKIE, nonce, cookieOptions);
   res.cookie(RETURN_COOKIE, back, cookieOptions);
   res.redirect(buildOAuthUrl(config, state));
@@ -124,7 +124,7 @@ router.get("/api/meta/callback", requireAuth, async (req: Request, res: Response
   res.clearCookie(RETURN_COOKIE, { path: "/api/meta" });
   const { config } = metaConfig();
   if (!config) return res.redirect(withParam(back, "meta", "unavailable"));
-  if (!verifyOAuthState(String(req.query.state ?? ""), user.sub, cookies[NONCE_COOKIE], signValue)) return res.redirect(withParam(back, "meta", "failed"));
+  if (!verifyOAuthState(String(req.query.state ?? ""), user.sub, cookies[NONCE_COOKIE], signState)) return res.redirect(withParam(back, "meta", "failed"));
   if (req.query.error || typeof req.query.code !== "string") return res.redirect(withParam(back, "meta", "denied"));
   try {
     const { token, expiresAt } = await exchangeCodeForToken(config, req.query.code);

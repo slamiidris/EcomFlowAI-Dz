@@ -9,11 +9,13 @@ import compression from "compression";
 // loader hook that makes the first dynamic import() of a local .ts file resolve to an empty module.
 import { getTelegramPulse } from "./server-telegram";
 import { prisma } from "./src/lib/prisma";
-import { requireAuth, SessionPayload, signValue } from "./src/lib/session";
+import { getCurrentUser, purposeSigner, requireAuth, SessionPayload } from "./src/lib/session";
 import { decryptSecret, isEncryptedSecret } from "./src/lib/crypto";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import { createPaidAccessGuard } from "./src/lib/planGuard";
 import { localizeResponses } from "./src/lib/localizeResponses";
+import { languageFromCookies, localizeBody } from "./src/i18n/serverMessages";
+import { SAVED_WORK_ERRORS } from "./src/lib/savedWork";
 import { IMAGE_MODEL_FALLBACKS, TEXT_MODEL_FALLBACKS, aiErrorResponse, generateWithFallback, isQuotaError } from "./src/lib/aiFallback";
 import { VIDEO_ERRORS, VIDEO_MODEL_FALLBACKS, isGoogleFileUri, parseVideoRequest, readJob, signJob } from "./src/lib/videoJobs";
 import { authRouter } from "./src/routes/auth";
@@ -28,6 +30,8 @@ import { projectsRouter } from "./src/routes/projects";
 import { assetsRouter } from "./src/routes/assets";
 import { brandRouter } from "./src/routes/brand";
 import { metaRouter } from "./src/routes/meta";
+
+const signVideoJob = purposeSigner("video-job");
 
 // Keep in sync with src/services/gemini.ts MODEL_NAME.
 const MODEL_NAME = "gemini-3-flash-preview";
@@ -74,17 +78,20 @@ const aiRateLimiter = createRateLimiter({
 const app = express();
 const PORT = 3000;
 
-// Trust the first upstream proxy so req.ip reflects the real client
-// (Vercel edge / local Express). Required for accurate rate-limit keys.
-app.set("trust proxy", true);
+// req.ip must be the real client for the rate limits. Trust exactly the proxies in front of the app (one: Vercel's
+// edge, or nginx on a Node host; set TRUST_PROXY to another count if needed). Trusting every hop would let a client
+// pick its own address with an X-Forwarded-For header.
+const proxyHops = Number.parseInt(process.env.TRUST_PROXY ?? "1", 10);
+app.set("trust proxy", Number.isInteger(proxyHops) && proxyHops >= 0 ? proxyHops : 1);
 
-// Security headers (helmet-equivalent with CSP off — the app uses Tailwind
-// inline styles, so a strict CSP would break it).
+// Security headers (helmet-equivalent). The content security policy is a <meta> tag in the built index.html
+// (vite.config.ts), so it also applies where Vercel serves the files without Express.
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("X-XSS-Protection", "0");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
@@ -111,7 +118,25 @@ app.use(
 // Vercel compresses responses at the edge; on a plain Node host we have to do it ourselves
 // (the JS bundle is ~450 KB raw, ~140 KB gzipped).
 if (process.env.VERCEL !== "1") app.use(compression());
-app.use(express.json({ limit: '10mb' })); // Increase limit for images
+// Request bodies: 1 MB by default. The routes that take images (uploads, AI calls with photos, payment proofs, admin
+// content, saved work) accept up to 10 MB, and only for a signed-in request: an anonymous client can never make the
+// server parse a large body.
+const LARGE_BODY_PATHS = ["/api/ai/", "/api/assets", "/api/meta/campaigns", "/api/user/payment-proof", "/api/admin/", "/api/catalog", "/api/preferences", "/api/lp-sessions", "/api/chat-sessions", "/api/projects/"];
+const smallJson = express.json({ limit: "1mb" });
+const largeJson = express.json({ limit: "10mb" });
+app.use((req, res, next) => {
+  const large = LARGE_BODY_PATHS.some((prefix) => req.path.startsWith(prefix)) && getCurrentUser(req) !== null;
+  return (large ? largeJson : smallJson)(req, res, next);
+});
+// A body over the limit, or one that is not JSON, gets a short JSON answer in the visitor's language (Express would
+// otherwise send an HTML error page). Only parsing errors reach this handler: it sits right after the parser.
+app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const type = (err as { type?: unknown } | null)?.type;
+  const language = languageFromCookies(req.headers.cookie);
+  if (type === "entity.too.large") return res.status(413).json(localizeBody({ error: SAVED_WORK_ERRORS.tooBig }, language));
+  if (type === "entity.parse.failed") return res.status(400).json(localizeBody({ error: SAVED_WORK_ERRORS.invalid }, language));
+  return next(err);
+});
 // Error messages are written in French in the routes; send them in the language the browser displays.
 app.use(localizeResponses);
 
@@ -298,7 +323,7 @@ app.post("/api/ai/video", requireAuth, requirePaidAccess, aiRateLimiter, async (
       logModelFallback,
     );
     if (!operation?.name) throw new Error("Veo returned no operation name");
-    res.json({ job: signJob(operation.name, user.sub, signValue) });
+    res.json({ job: signJob(operation.name, user.sub, signVideoJob) });
   } catch (error) {
     console.error("AI Video Error:", error);
     if (isQuotaError(error)) return res.status(402).json({ error: VIDEO_ERRORS.quota });
@@ -310,7 +335,7 @@ app.post("/api/ai/video", requireAuth, requirePaidAccess, aiRateLimiter, async (
 /** The Veo operation behind a job token, refreshed from Google; sends the error response itself and returns null on failure. */
 async function loadVideoJob(req: express.Request, res: express.Response) {
   const user = req.user as SessionPayload;
-  const name = readJob(String(req.params.job ?? ""), user.sub, signValue);
+  const name = readJob(String(req.params.job ?? ""), user.sub, signVideoJob);
   if (!name) { res.status(404).json({ error: VIDEO_ERRORS.job }); return null; }
   const apiKey = await resolveGeminiKey(user);
   if (!apiKey) { res.status(400).json({ error: NO_KEY_MSG }); return null; }

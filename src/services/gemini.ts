@@ -871,37 +871,27 @@ export async function generateSectionImage(prompt: string, productPhoto?: string
   throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
 }
 
+// A failure reaches the caller as it is: no stand-in stock photo, which shown as "generated" would mislead the seller.
 export async function generateProductImage(productName: string, style: string = "lifestyle, clean lighting, professional photography", aspectRatio: string = "1:1") {
-  try {
-    return await callGeminiWithRetry(async (ai) => {
-      const response = await ai.models.generateContent({
-        model: IMAGE_MODEL_NAME,
-        contents: `Generate a professional product photo for: ${productName}. 
+  return callGeminiWithRetry(async (ai) => {
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL_NAME,
+      contents: `Generate a professional product photo for: ${productName}. 
         Style: ${style}. 
         Mandatory Aspect Ratio: --ar ${aspectRatio}. 
         The composition must be optimized for a ${aspectRatio} format.`,
-        config: { maxOutputTokens: 2048 }
-      });
+      config: { maxOutputTokens: 2048 }
+    });
       
-      for (const candidate of response.candidates || []) {
-        for (const part of candidate.content.parts) {
-          if (part.inlineData) {
-            return `data:image/png;base64,${part.inlineData.data}`;
-          }
+    for (const candidate of response.candidates || []) {
+      for (const part of candidate.content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
         }
       }
-      throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
-    });
-  } catch (e: any) {
-    // A 400 or 403 from the proxy is a definitive rejection (no Gemini key configured, or no active
-    // plan) — surface it instead of silently falling back.
-    if (e?.status === 400 || e?.status === 403) throw e;
-    console.warn("Gemini Image generation failed, using fallback:", e);
-    // Fallback using loremflickr with relevant keywords
-    const keywords = `${productName.replace(/\s+/g, ',')},product,commercial`;
-    const [w, h] = aspectRatio === "16:9" ? [1280, 720] : aspectRatio === "9:16" ? [720, 1280] : aspectRatio === "4:5" ? [800, 1000] : [1024, 1024];
-    return `https://loremflickr.com/${w}/${h}/${keywords}`;
-  }
+    }
+    throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
+  });
 }
 
 export function createExpertChat(history: any[] = []) {

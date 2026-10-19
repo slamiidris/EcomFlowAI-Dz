@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, type Plugin } from 'vite';
+import { LANDING_PAGE_SCRIPT } from './src/lib/landingHtml';
 
 /**
  * The first screen needs one lazily loaded chunk (the app shell for members, the landing page for
@@ -62,8 +64,56 @@ function shareImageTags(): Plugin {
   };
 }
 
+/**
+ * Content security policy, as a <meta> tag written into the built index.html, so it applies on every host (Vercel
+ * serves this file directly, a Node host through Express). Scripts may only come from this site, or be one of the
+ * inline scripts below, allowed by their hash: the ones in index.html and the order-form script of generated
+ * landing pages, which runs in the live preview (an iframe srcdoc inherits this policy). Built pages only: the
+ * dev server needs Vite's own scripts.
+ */
+function contentSecurityPolicy(): Plugin {
+  // browsers hash the script as parsed, after turning CRLF into LF (index.html has CRLF in a Windows checkout)
+  const sha256 = (code: string) => `'sha256-${createHash('sha256').update(code.replace(/\r\n?/g, '\n'), 'utf8').digest('base64')}'`;
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        const inline = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).filter((code) => code.trim());
+        const scripts = [...new Set([...inline, LANDING_PAGE_SCRIPT].map(sha256))];
+        const policy = [
+          "default-src 'self'",
+          `script-src 'self' ${scripts.join(' ')}`,
+          // inline style attributes are everywhere (React, Tailwind's arbitrary values); generated pages use Google Fonts
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' data: https://fonts.gstatic.com",
+          // product photos, AI images and video frames are data:/blob: URLs; guide thumbnails, avatars and admin images are https
+          "img-src 'self' data: blob: https:",
+          "media-src 'self' data: blob:",
+          // the preview of a landing page posts test orders to the seller's own https webhook; data:/blob: are read
+          // locally (turning a generated image into a file), they cannot send anything anywhere
+          "connect-src 'self' https: data: blob:",
+          "frame-src 'self' blob: https://www.youtube-nocookie.com https://www.youtube.com",
+          "worker-src 'self' blob:",
+          "manifest-src 'self'",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self' https:",
+        ].join('; ');
+        const tag = `<meta http-equiv="Content-Security-Policy" content="${policy}" />`;
+        // right after <meta charset>: a policy only governs what comes after it, so it must precede the inline scripts
+        const charset = /<meta charset="[^"]*"\s*\/?>/i;
+        if (!charset.test(html)) throw new Error('index.html has no <meta charset>; the content security policy cannot be placed');
+        return html.replace(charset, (m) => `${m}\n    ${tag}`);
+      },
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), earlyChunkPreload(), shareImageTags()],
+  // the policy comes last, so it sees (and hashes) the scripts the other plugins add
+  plugins: [react(), tailwindcss(), earlyChunkPreload(), shareImageTags(), contentSecurityPolicy()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

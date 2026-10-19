@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, SessionPayload } from "../lib/session";
 import { createRateLimiter } from "../lib/rateLimit";
+import { ASSET_META, SERVER_ERROR, UUID, accountKey } from "../lib/routeHelpers";
 import type { Prisma } from "@prisma/client";
 import { hasPaidAccess, withAccountLock } from "../lib/accountLimits";
 import { ASSET_ERRORS, ASSET_KINDS, MAX_ASSETS_PER_PROJECT, STORAGE_BYTES, parseAssetInput } from "../lib/assetRules";
@@ -12,13 +13,9 @@ import { ASSET_ERRORS, ASSET_KINDS, MAX_ASSETS_PER_PROJECT, STORAGE_BYTES, parse
  */
 const router = Router();
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ASSET_META = { id: true, kind: true, name: true, mimeType: true, size: true, width: true, height: true, createdAt: true, projectId: true } as const;
 const PAGE_SIZE = 60;
-const SERVER_ERROR = "Erreur serveur.";
 
-const userKey = (req: { user?: unknown; ip?: string }) => (req.user as SessionPayload | undefined)?.sub ?? req.ip ?? "anon";
-const uploadLimiter = createRateLimiter({ windowMs: 60_000, max: 40, keyFn: userKey, message: "Trop d'envois. Réessaie dans une minute." });
+const uploadLimiter = createRateLimiter({ windowMs: 60_000, max: 40, keyFn: accountKey, message: "Trop d'envois. Réessaie dans une minute." });
 
 async function storageUsed(userId: string, db: Prisma.TransactionClient = prisma): Promise<number> {
   const agg = await db.asset.aggregate({ where: { userId }, _sum: { size: true } });

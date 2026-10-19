@@ -148,3 +148,19 @@ describe('password reset tokens', () => {
     }
   });
 });
+
+describe('purposeSigner', () => {
+  it('signs the same value differently for each purpose, so a token made for one use fails every other check', () => {
+    const state = session.purposeSigner('meta-oauth-state');
+    const job = session.purposeSigner('video-job');
+    expect(state('abc')).toBe(state('abc'));
+    expect(state('abc')).not.toBe(job('abc'));
+    expect(state('abc')).not.toBe(session.signValue('abc'));
+  });
+
+  it('never produces a valid session token', () => {
+    const body = Buffer.from(JSON.stringify({ ...PAYLOAD, exp: Date.now() + DAY })).toString('base64url');
+    expect(session.verifySession(`${body}.${session.purposeSigner('video-job')(body)}`)).toBeNull();
+    expect(session.verifySession(`${body}.${session.signValue(body)}`)).not.toBeNull();
+  });
+});

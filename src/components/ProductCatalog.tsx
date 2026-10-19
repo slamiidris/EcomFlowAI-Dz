@@ -44,43 +44,6 @@ interface Product {
   delivRate: number;
 }
 
-const initialProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Smart Watch DZ-1 Ultra',
-    category: 'Electronique',
-    purchasePrice: 2500,
-    sellingPrice: 5900,
-    targetCPA: 4.5,
-    stock: 45,
-    status: 'active',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400',
-    countries: 'DZ',
-    description: 'Montre connectée haute performance.',
-    sales: 124,
-    euroRate: 220,
-    confRate: 0.85,
-    delivRate: 0.60
-  },
-  {
-    id: '2',
-    name: 'Diffuseur Huiles Essentielles',
-    category: 'Maison',
-    purchasePrice: 1200,
-    sellingPrice: 3500,
-    targetCPA: 3.2,
-    stock: 8,
-    status: 'low_stock',
-    image: 'https://images.unsplash.com/photo-1570942872129-14356da3df75?auto=format&fit=crop&q=80&w=400',
-    countries: 'DZ',
-    description: 'Ambiance zen pour votre maison.',
-    sales: 89,
-    euroRate: 220,
-    confRate: 0.80,
-    delivRate: 0.65
-  }
-];
-
 const AVAILABLE_COUNTRIES = [
   { code: 'DZ', name: 'Algérie', flag: '🇩🇿' },
   { code: 'MA', name: 'Maroc', flag: '🇲🇦' },
@@ -127,9 +90,10 @@ const productToApiPayload = (product: Product): Partial<CatalogProduct> => ({
 });
 
 export default function ProductCatalog() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Only the seller's own products: no sample products dressed up as their inventory.
+  const [products, setProducts] = useState<Product[]>([]);
 
-  // Load products from the server API on mount (fall back silently to seed data).
+  // Load products from the server API on mount.
   useEffect(() => {
     let cancelled = false;
     (async () => {

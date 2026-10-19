@@ -116,6 +116,13 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
   (`/api/ai/generate` and `/api/ai/video` answer 403 `PLAN_REQUIRED` without a live plan; administrators are exempt).
 - Sessions are signed cookies that expire after 30 days. Changing `SESSION_SECRET` signs everyone out.
 - Gemini keys and ad-platform tokens are encrypted at rest (`TOKEN_ENCRYPTION_KEY`, falling back to `SESSION_SECRET`).
+- **Browser security:** the built `index.html` carries a content security policy (scripts only from this site, or one
+  of the inline scripts allowed by hash, including the order-form script of generated landing pages, which runs in the
+  live preview). Security headers (`nosniff`, `X-Frame-Options`, HSTS, `Permissions-Policy`) are set by Express and,
+  on Vercel, by the routes in `scripts/vercel-output.mjs`. If you add an inline script to `index.html`, the build
+  hashes it automatically (`vite.config.ts`).
+- **Requests:** bodies are limited to 1 MB, or 10 MB for signed-in requests to the routes that take images. The
+  client address used by the rate limits trusts exactly `TRUST_PROXY` proxies (default 1).
 
 ## AI and Gemini keys
 
@@ -160,7 +167,7 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (432 in 44 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+`npm test` runs the unit tests (434 in 44 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
 delivery, settings validation, pricing, translations, AI error handling, the video timeline, the landing page HTML,
 campaign / file / brand-kit validation, ad packs, ad layouts and CSV export, the Meta payloads, budgets and login state,
 the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
@@ -172,8 +179,10 @@ this repository.
 ## Deployment
 
 `npm run deploy:vercel` builds, assembles the Vercel output (`scripts/vercel-output.mjs`) and deploys. Set the variables
-from `.env.example` in the host. In production `SESSION_SECRET` is required, and `SITE_URL` should be the public address
-of the site so link previews (WhatsApp, Facebook) get an absolute image URL.
+from `.env.example` in the host. In production `SESSION_SECRET` is required: both server bundles (`build/server.cjs` and
+the Vercel function) are built with `NODE_ENV=production`, so they refuse to start without it instead of using the
+development secret. `SITE_URL` should be the public address of the site so link previews (WhatsApp, Facebook) get an
+absolute image URL.
 
 **Database update for this version:** run `npx prisma db push` once against the production database. It only adds
 tables (`projects`, `assets`, `project_outputs`, `brand_kits`, `meta_connections`) and leaves existing ones alone; read
@@ -193,5 +202,7 @@ stored in Postgres (up to 250 MB per account), so keep an eye on the database si
   needs Meta's App Review before sellers outside the app's own team can connect (see "Meta publishing").
 - The home page illustrations are drawings of the product, not screenshots. The old logo, hero and showcase pictures
   (`src/images/`) are no longer used and were removed; they remain in the git history.
-- Studio Photos (not linked) still shows random stock photos when its AI image fails.
+- The hidden tools Produits Gagnants and Calendrier are static previews: they now say so on screen (their figures are
+  examples). Studio Photos no longer shows a random stock photo when its AI image fails, and the catalog no longer
+  fills itself with sample products.
 - The home page is a client-rendered app: first paint depends on the JavaScript loading.

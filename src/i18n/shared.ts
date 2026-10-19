@@ -288,6 +288,11 @@ export const sharedTranslations: TranslationDictionary = {
     ar: "إعادة المحاولة",
     en: "Try again",
   },
+  demoDataNotice: {
+    fr: "Aperçu en cours de développement : les chiffres et les éléments affichés ici sont des exemples, pas des données réelles.",
+    ar: "معاينة قيد التطوير: الأرقام والعناصر المعروضة هنا أمثلة وليست بيانات حقيقية.",
+    en: "Preview under development: the figures and items shown here are examples, not real data.",
+  },
 };
 
 registerTranslations('shared', sharedTranslations);

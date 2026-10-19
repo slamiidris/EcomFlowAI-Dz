@@ -132,6 +132,45 @@ function sectionHtml(section: LpSection, image: string | null, tx: Record<string
   return `<section class="block">${parts.join('')}</section>`;
 }
 
+/**
+ * The order form's script, the same in every page (the page's data sits in the JSON block before it). Kept as one
+ * constant so the app's content security policy can allow exactly this script, by its hash, in the live preview.
+ */
+export const LANDING_PAGE_SCRIPT = `
+(function () {
+  var cfg = JSON.parse(document.getElementById('lp-config').textContent);
+  var form = document.getElementById('order-form');
+  var error = document.getElementById('order-error');
+  var thanks = document.getElementById('order-thanks');
+  var phoneOk = new RegExp(cfg.phonePattern);
+  form.querySelectorAll('[data-step]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var q = form.elements.quantity;
+      q.value = Math.max(1, Math.min(20, (parseInt(q.value, 10) || 1) + parseInt(b.getAttribute('data-step'), 10)));
+    });
+  });
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var f = form.elements;
+    var order = { product: cfg.product, price: cfg.price, name: f.name.value.trim(), phone: f.phone.value.replace(/[\\s.-]/g, ''), wilaya: f.wilaya.value, address: f.address.value.trim(), quantity: parseInt(f.quantity.value, 10) || 1, date: new Date().toISOString() };
+    error.hidden = true;
+    if (!order.name || !order.phone || !order.wilaya || !order.address) { error.textContent = cfg.messages.missing; error.hidden = false; return; }
+    if (!phoneOk.test(order.phone)) { error.textContent = cfg.messages.badPhone; error.hidden = false; return; }
+    if (cfg.webhook) {
+      fetch(cfg.webhook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(order) }).catch(function () {});
+    }
+    if (cfg.whatsapp) {
+      var l = cfg.labels;
+      var text = l.newOrder + ': ' + order.product + '\\n' + l.name + ': ' + order.name + '\\n' + l.phone + ': ' + order.phone + '\\n' + l.wilaya + ': ' + order.wilaya + '\\n' + l.address + ': ' + order.address + '\\n' + l.quantity + ': ' + order.quantity + (order.price ? '\\n' + l.price + ': ' + cfg.priceText : '');
+      window.open('https://wa.me/' + cfg.whatsapp + '?text=' + encodeURIComponent(text), '_blank');
+    }
+    form.hidden = true;
+    thanks.hidden = false;
+    thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+})();
+`;
+
 export function buildLandingHtml(input: LandingPageInput): string {
   const sections = input.sections ?? [];
   const lang = pageLanguage(input.language, sections.flatMap((s) => [s.title ?? '', s.content ?? '']));
@@ -265,40 +304,7 @@ ${priceHtml}
 <footer>${e(tx.cod)} · ${e(tx.delivery)} · ${e(tx.guarantee)}</footer>
 <div class="sticky-cta"><a class="btn" href="#order">${e(tx.order)}${price ? ` — <bdi dir="ltr">${e(price)}</bdi>` : ''}</a></div>
 <script type="application/json" id="lp-config">${configJson}</script>
-<script>
-(function () {
-  var cfg = JSON.parse(document.getElementById('lp-config').textContent);
-  var form = document.getElementById('order-form');
-  var error = document.getElementById('order-error');
-  var thanks = document.getElementById('order-thanks');
-  var phoneOk = new RegExp(cfg.phonePattern);
-  form.querySelectorAll('[data-step]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      var q = form.elements.quantity;
-      q.value = Math.max(1, Math.min(20, (parseInt(q.value, 10) || 1) + parseInt(b.getAttribute('data-step'), 10)));
-    });
-  });
-  form.addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    var f = form.elements;
-    var order = { product: cfg.product, price: cfg.price, name: f.name.value.trim(), phone: f.phone.value.replace(/[\\s.-]/g, ''), wilaya: f.wilaya.value, address: f.address.value.trim(), quantity: parseInt(f.quantity.value, 10) || 1, date: new Date().toISOString() };
-    error.hidden = true;
-    if (!order.name || !order.phone || !order.wilaya || !order.address) { error.textContent = cfg.messages.missing; error.hidden = false; return; }
-    if (!phoneOk.test(order.phone)) { error.textContent = cfg.messages.badPhone; error.hidden = false; return; }
-    if (cfg.webhook) {
-      fetch(cfg.webhook, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(order) }).catch(function () {});
-    }
-    if (cfg.whatsapp) {
-      var l = cfg.labels;
-      var text = l.newOrder + ': ' + order.product + '\\n' + l.name + ': ' + order.name + '\\n' + l.phone + ': ' + order.phone + '\\n' + l.wilaya + ': ' + order.wilaya + '\\n' + l.address + ': ' + order.address + '\\n' + l.quantity + ': ' + order.quantity + (order.price ? '\\n' + l.price + ': ' + cfg.priceText : '');
-      window.open('https://wa.me/' + cfg.whatsapp + '?text=' + encodeURIComponent(text), '_blank');
-    }
-    form.hidden = true;
-    thanks.hidden = false;
-    thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-})();
-</script>
+<script>${LANDING_PAGE_SCRIPT}</script>
 </body>
 </html>
 `;

@@ -1,5 +1,6 @@
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import DemoDataNotice from './DemoDataNotice';
 
 export default function ContentCalendar() {
 
@@ -15,6 +16,7 @@ export default function ContentCalendar() {
 
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-dz-emerald/20 rounded-lg">

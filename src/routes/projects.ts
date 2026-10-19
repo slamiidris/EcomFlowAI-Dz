@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, SessionPayload } from "../lib/session";
 import { createRateLimiter } from "../lib/rateLimit";
+import { ASSET_META, SERVER_ERROR, UUID, accountKey } from "../lib/routeHelpers";
 import { hasPaidAccess, withAccountLock } from "../lib/accountLimits";
 import { connectionClient } from "../lib/metaAccount";
 import {
@@ -21,12 +22,7 @@ import {
  */
 const router = Router();
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ASSET_META = { id: true, kind: true, name: true, mimeType: true, size: true, width: true, height: true, createdAt: true, projectId: true } as const;
-const SERVER_ERROR = "Erreur serveur.";
-
-const userKey = (req: { user?: unknown; ip?: string }) => (req.user as SessionPayload | undefined)?.sub ?? req.ip ?? "anon";
-const writeLimiter = createRateLimiter({ windowMs: 60_000, max: 60, keyFn: userKey });
+const writeLimiter = createRateLimiter({ windowMs: 60_000, max: 60, keyFn: accountKey });
 
 function ownedProject(id: string, userId: string) {
   if (!UUID.test(id)) return Promise.resolve(null);

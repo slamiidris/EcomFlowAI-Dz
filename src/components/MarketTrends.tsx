@@ -1,5 +1,6 @@
 import { TrendingUp, BarChart3, ShoppingBag } from 'lucide-react';
 import { cn } from '../lib/utils';
+import DemoDataNotice from './DemoDataNotice';
 
 export default function MarketTrends() {
   const trendingProducts = [
@@ -11,6 +12,7 @@ export default function MarketTrends() {
 
   return (
     <div className="space-y-8">
+      <DemoDataNotice />
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-fg mb-2 tracking-tight flex items-center gap-3">
           <div className="p-2 bg-dz-emerald/20 rounded-lg text-dz-emerald">
