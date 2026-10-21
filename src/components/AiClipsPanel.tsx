@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, RotateCcw, Sparkles, Square } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/video';
-import { buildScenePrompt, type PromptScene } from '../lib/veoPrompt';
+import { buildScenePrompt, type PromptScene } from '../lib/aiVideoPrompt';
+
+/** Google's price for the video model, per filmed second at 720p (about; shown to the seller before filming). */
+const COST_PER_SECOND = 0.1;
+const SCENE_SECONDS = 8;
 import { AiVideoError, startAiClip, waitForAiClip } from '../services/aiVideo';
 
 type Status = 'idle' | 'running' | 'done' | 'error';
@@ -18,9 +22,9 @@ interface Props {
   onClip: (index: number, url: string) => void;
 }
 
-/** Films each scene of the script with Google Veo (needs a Gemini key with billing). */
+/** Films each scene of the script with Google's video model (needs a Gemini key with billing). */
 export default function AiClipsPanel({ scenes, format, photo, productName, clips, onClip }: Props) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [status, setStatus] = useState<Status[]>(() => scenes.map((_, i) => (clips[i] ? 'done' : 'idle')));
   const [current, setCurrent] = useState<number | null>(null);
   const [banner, setBanner] = useState('');
@@ -35,7 +39,8 @@ export default function AiClipsPanel({ scenes, format, photo, productName, clips
     setCurrent(i);
     setOne(i, 'running');
     try {
-      const job = await startAiClip({ prompt: buildScenePrompt(scenes[i], { productName, format }), aspectRatio: format, image: photo, signal });
+      const prompt = buildScenePrompt(scenes[i], { productName, format, index: i, total: scenes.length, durationSeconds: SCENE_SECONDS });
+      const job = await startAiClip({ prompt, aspectRatio: format, image: photo, signal });
       const url = await waitForAiClip(job, { signal });
       onClip(i, url);
       setOne(i, 'done');
@@ -71,10 +76,12 @@ export default function AiClipsPanel({ scenes, format, photo, productName, clips
     <section className="ui-card p-5 sm:p-6" aria-labelledby="ai-clips-title">
       <div className="flex items-center gap-2 mb-1">
         <Sparkles size={18} className="text-accent-ink" />
-        <h4 id="ai-clips-title" className="text-base font-semibold text-fg">{t('vmAiTitle', 'Clips vidéo IA (Google Veo)')}</h4>
+        <h4 id="ai-clips-title" className="text-base font-semibold text-fg">{t('vmAiTitle', "Vidéo filmée par l'IA (Google Gemini)")}</h4>
         {ready > 0 && <span className="ms-auto text-xs text-fg-faint">{t('vmAiReady', '{done}/{total} clips prêts', { done: ready, total: scenes.length })}</span>}
       </div>
-      <p className="text-sm text-fg-muted mb-4">{t('vmAiIntro', "L'IA filme une vraie vidéo pour chaque scène (8 s), à partir de ta photo. Il faut une clé Gemini avec facturation : Google facture chaque seconde générée sur ton compte.")}</p>
+      <p className="text-sm text-fg-muted mb-4">
+        {t('vmAiIntro', "L'IA filme une vraie vidéo avec musique pour chaque scène (environ 8 s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Il faut une clé Gemini avec facturation : Google facture environ 0,10 $ par seconde filmée, soit environ {cost} $ pour les scènes restantes.", { cost: new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((scenes.length - ready) * SCENE_SECONDS * COST_PER_SECOND) })}
+      </p>
 
       {banner && <p className="mb-4 rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5 text-sm text-warning-ink" role="alert">{banner}</p>}
 

@@ -97,7 +97,7 @@ export default function LandingPage() {
       points: [
         t('homeVideoPoint1', 'Formats 9:16, 4:5, 1:1 et 16:9'),
         t('homeVideoPoint2', 'Export MP4 (ou WebM selon le navigateur), sans bande son'),
-        t('homeVideoPoint3', 'Plans vidéo générés par IA (Veo) en option, avec la facturation Google'),
+        t('homeVideoPoint3', "Vidéo filmée par l'IA (Google Gemini) en option, avec la facturation Google"),
       ],
       visual: <VideoVisual />,
     },

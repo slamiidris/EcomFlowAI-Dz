@@ -1,4 +1,4 @@
-import { Lock, LogOut, MessageCircle, Plus, Settings, Shield } from 'lucide-react';
+import { Lock, LogOut, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
@@ -7,6 +7,7 @@ import { isToolPaid, hasActivePlan } from '../lib/access';
 import { useCountdown } from '../lib/countdown';
 import { NAV_GROUPS, type NavItem } from '../lib/nav';
 import { BrandLogo } from './BrandMark';
+import { SectionPicture } from './ui/SectionPicture';
 
 interface SidebarProps {
   activeTab: NavItem;
@@ -78,9 +79,9 @@ export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavi
   const paidLocked = !hasActivePlan(user);
   const avatar = user?.avatarUrl ?? user?.avatar;
 
-  const secondary: { id: NavItem; label: string; icon: typeof Settings }[] = [
-    { id: 'settings', label: t('menuSettings', 'Paramètres'), icon: Settings },
-    { id: 'contact', label: t('menuContact', 'Contact & support'), icon: MessageCircle },
+  const secondary: { id: NavItem; label: string }[] = [
+    { id: 'settings', label: t('menuSettings', 'Paramètres') },
+    { id: 'contact', label: t('menuContact', 'Contact & support') },
   ];
 
   return (
@@ -115,7 +116,7 @@ export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavi
                       aria-current={active ? 'page' : undefined}
                       className={cn('nav-item', active && 'is-active')}
                     >
-                      <item.icon size={17} className="shrink-0" />
+                      <SectionPicture id={item.id} />
                       <span className="flex-1 truncate">{t(item.labelKey, item.fallback)}</span>
                       {paidLocked && isToolPaid(item.id) && <Lock size={13} className="shrink-0 text-fg-faint" />}
                     </button>
@@ -137,13 +138,13 @@ export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavi
               aria-current={activeTab === item.id ? 'page' : undefined}
               className={cn('nav-item', activeTab === item.id && 'is-active')}
             >
-              <item.icon size={17} className="shrink-0" />
+              <SectionPicture id={item.id} />
               <span className="truncate">{item.label}</span>
             </button>
           ))}
           {user?.isAdmin && (
             <a href="/admin" className="nav-item">
-              <Shield size={17} className="shrink-0" />
+              <SectionPicture id="admin" />
               <span className="truncate">{t('shlAdmin', 'Admin')}</span>
             </a>
           )}

@@ -5,8 +5,12 @@
  */
 export const TEXT_MODEL_FALLBACKS = ['gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest'];
 
-/** Image models, the one the browser asks for first (src/services/gemini.ts IMAGE_MODEL_NAME). They need a key with billing. */
-export const IMAGE_MODEL_FALLBACKS = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image'];
+/**
+ * Image models, the one the browser asks for first (src/services/gemini.ts IMAGE_MODEL_NAME). They need a key with
+ * billing. Nano Banana 2.1 is Google's current one; the older ones stay behind it for keys that cannot use it yet
+ * (gemini-2.5-flash-image is closed to keys that never used it, and retires on 2027-03-15).
+ */
+export const IMAGE_MODEL_FALLBACKS = ['gemini-nano-banana-2.1', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
 
 /** Sent when the user's key has used its free requests for the day on every model we try. */
 export const AI_DAILY_QUOTA_MSG = "Ta clé Gemini a atteint sa limite gratuite du jour. Réessaie demain, ou active la facturation dans Google AI Studio.";
@@ -43,6 +47,17 @@ export function isModelBusyError(error: unknown): boolean {
 }
 
 /**
+ * True when Google does not offer the model to this key (HTTP 404 NOT_FOUND): retired, unknown, or closed to keys
+ * that never used it. The same request can work on another model.
+ */
+export function isModelGoneError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { status?: unknown; code?: unknown; message?: unknown };
+  if (e.status === 404 || e.code === 404 || e.status === 'NOT_FOUND') return true;
+  return /"status":\s*"NOT_FOUND"/.test(String(e.message ?? ''));
+}
+
+/**
  * The status and French message (translated on the way out, see src/i18n/serverMessages.ts) for a failed AI call.
  * Upstream details are never passed on.
  */
@@ -60,9 +75,10 @@ export function aiErrorResponse(error: unknown): { status: number; error: string
 }
 
 /**
- * Calls `generate` with each model in turn until one answers. A quota error or an overloaded model moves on to the
- * next model; any other failure (an invalid key, a bad request) is thrown at once. When every model fails that way,
- * the last error is thrown.
+ * Calls `generate` with each model in turn until one answers. A quota error, an overloaded model or a model this key
+ * cannot use moves on to the next model; any other failure (an invalid key, a bad request) is thrown at once. When
+ * every model fails that way, the last quota or overload error is thrown (it tells the user what to do), or else the
+ * last error.
  */
 export async function generateWithFallback<T>(
   models: string[],
@@ -71,14 +87,16 @@ export async function generateWithFallback<T>(
 ): Promise<{ result: T; model: string }> {
   if (!models.length) throw new Error('generateWithFallback needs at least one model');
   let lastError: unknown;
+  let telling: unknown;
   for (let i = 0; i < models.length; i++) {
     try {
       return { result: await generate(models[i]), model: models[i] };
     } catch (error) {
-      if (!isQuotaError(error) && !isModelBusyError(error)) throw error;
+      if (!isQuotaError(error) && !isModelBusyError(error) && !isModelGoneError(error)) throw error;
       lastError = error;
+      if (!isModelGoneError(error)) telling = error;
       if (i + 1 < models.length) onFallback?.(models[i], models[i + 1]);
     }
   }
-  throw lastError;
+  throw telling ?? lastError;
 }

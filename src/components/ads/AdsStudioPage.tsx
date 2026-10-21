@@ -48,7 +48,7 @@ export default function AdsStudioPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        icon={Megaphone}
+        section="ads"
         title={t('menuAds', 'Publicités')}
         subtitle={t('adsStudioSubtitle', 'Concepts, textes et visuels prêts pour Facebook et Instagram, à partir d’une de tes campagnes.')}
         actions={

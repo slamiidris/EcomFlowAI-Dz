@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CheckCircle2, ExternalLink, KeyRound, Loader2, Save, Settings as SettingsIcon } from 'lucide-react';
+import { Briefcase, CheckCircle2, ExternalLink, KeyRound, Loader2, Save } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { settingsApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import PageHeader from './PageHeader';
 import MetaConnection, { useMetaReturnNotice, useMetaStatus } from './meta/MetaConnection';
+import ImageServiceSettings, { type ImageServiceDraft, type SavedImageKeys } from './settings/ImageServiceSettings';
+import { DEFAULT_IMAGE_PROVIDER, isImageProvider } from '../lib/imageProviders';
 import { StatusChip } from './ui/primitives';
 import '../i18n/settings';
 import '../i18n/campaigns';
@@ -21,6 +23,8 @@ export default function Settings() {
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [images, setImages] = useState<ImageServiceDraft>({ provider: DEFAULT_IMAGE_PROVIDER, openaiApiKey: '', falApiKey: '', cloudflareAccountId: '', cloudflareApiToken: '' });
+  const [savedImageKeys, setSavedImageKeys] = useState<SavedImageKeys>({ openai: false, fal: false, cloudflare: false });
   const meta = useMetaStatus();
   useMetaReturnNotice(meta.reload);
 
@@ -32,6 +36,8 @@ export default function Settings() {
         if (cancelled || !saved) return;
         setWorkspaceName(saved.workspaceName ?? '');
         setHasGeminiKey(Boolean(saved.geminiApiKey));
+        setImages((d) => ({ ...d, provider: isImageProvider(saved.imageProvider) ? saved.imageProvider : DEFAULT_IMAGE_PROVIDER, cloudflareAccountId: saved.cloudflareAccountId ?? '' }));
+        setSavedImageKeys({ openai: Boolean(saved.openaiApiKey), fal: Boolean(saved.falApiKey), cloudflare: Boolean(saved.cloudflareApiToken) && Boolean(saved.cloudflareAccountId) });
       })
       .catch(() => toast.error(t('stgErreurLorsSauvegarde', 'Erreur lors de la sauvegarde')))
       .finally(() => !cancelled && setLoaded(true));
@@ -41,9 +47,16 @@ export default function Settings() {
   const save = async () => {
     setSaving('saving');
     try {
-      await settingsApi.update({ workspaceName, geminiApiKey: geminiKey.trim() });
+      const typed = { openaiApiKey: images.openaiApiKey.trim(), falApiKey: images.falApiKey.trim(), cloudflareApiToken: images.cloudflareApiToken.trim() };
+      await settingsApi.update({ workspaceName, geminiApiKey: geminiKey.trim(), imageProvider: images.provider, cloudflareAccountId: images.cloudflareAccountId.trim(), ...typed });
       if (geminiKey.trim()) setHasGeminiKey(true);
       setGeminiKey('');
+      setSavedImageKeys((s) => ({
+        openai: s.openai || Boolean(typed.openaiApiKey),
+        fal: s.fal || Boolean(typed.falApiKey),
+        cloudflare: Boolean(images.cloudflareAccountId.trim()) && (s.cloudflare || Boolean(typed.cloudflareApiToken)),
+      }));
+      setImages((d) => ({ ...d, openaiApiKey: '', falApiKey: '', cloudflareApiToken: '' }));
       setSaving('saved');
       toast.success(t('stgParametresEnregistresAvecSucce', 'Paramètres enregistrés avec succès !'));
       setTimeout(() => setSaving('idle'), 2500);
@@ -55,7 +68,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl space-y-8">
-      <PageHeader icon={SettingsIcon} title={t('menuSettings', 'Paramètres')} subtitle={t('stgSubtitleNew', 'Ton espace, ta clé d’IA et tes connexions publicitaires.')} />
+      <PageHeader section="settings" title={t('menuSettings', 'Paramètres')} subtitle={t('stgSubtitleNew', 'Ton espace, ta clé d’IA et tes connexions publicitaires.')} />
 
       <section aria-labelledby="stg-workspace" className="ui-card p-5">
         <div className="mb-4 flex items-center gap-3">
@@ -90,13 +103,15 @@ export default function Settings() {
           dir="ltr"
         />
         <div className="mt-3 space-y-1.5 text-xs leading-relaxed text-fg-muted">
-          <p>{t('stgCetteCleAlimenteToute', 'Cette clé alimente toute la génération IA (images, vidéos, copy, analyses…). Elle est chiffrée et ne quitte jamais le serveur.')}</p>
+          <p>{t('stgCetteCleAlimenteToute', 'Cette clé alimente la génération IA (textes, vidéos, analyses, et les images sauf si tu choisis un autre service plus bas). Elle est chiffrée et ne quitte jamais le serveur.')}</p>
           <p>{t('stgBillingNote', 'Une clé gratuite suffit pour les textes, les landing pages, les scripts et les publicités. Les images et les clips vidéo IA demandent une clé avec facturation activée.')}</p>
           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-primary-ink hover:underline">
             {t('stgGetKey', 'Créer une clé dans Google AI Studio')} <ExternalLink size={12} />
           </a>
         </div>
       </section>
+
+      <ImageServiceSettings draft={images} onChange={setImages} saved={savedImageKeys} loaded={loaded} />
 
       <div className="flex justify-end">
         <button type="button" onClick={save} disabled={saving === 'saving' || !loaded} className="btn-dz-primary disabled:opacity-60">

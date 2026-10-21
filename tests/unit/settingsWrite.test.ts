@@ -54,6 +54,23 @@ describe('buildSettingsWrite', () => {
     expect(() => build({ geminiApiKey: 'k'.repeat(2049) })).toThrow(/trop long/i);
   });
 
+  it('stores the image service chosen, and refuses one it does not know', () => {
+    expect(build({ imageProvider: 'openai' }).updateData.imageProvider).toBe('openai');
+    expect(build({}).updateData).not.toHaveProperty('imageProvider');
+    expect(() => build({ imageProvider: 'midjourney' })).toThrow(/inconnu/i);
+  });
+
+  it('encrypts the other image services\' keys like the Gemini key', () => {
+    const { updateData } = build({ openaiApiKey: 'sk-1', falApiKey: 'fal-1', cloudflareApiToken: 'cf-1' });
+    expect(updateData).toMatchObject({ openaiApiKey: 'enc(sk-1)', falApiKey: 'enc(fal-1)', cloudflareApiToken: 'enc(cf-1)' });
+  });
+
+  it('only takes a Cloudflare account id in its own format (it goes into an address)', () => {
+    expect(build({ cloudflareAccountId: ' 0123456789abcdef0123456789abcdef ' }).updateData.cloudflareAccountId).toBe('0123456789abcdef0123456789abcdef');
+    expect(build({ cloudflareAccountId: '' }).updateData.cloudflareAccountId).toBeNull();
+    expect(() => build({ cloudflareAccountId: '../accounts/x' })).toThrow(/Cloudflare/);
+  });
+
   it('ignores fields it does not know', () => {
     const { createData, updateData } = build({ isAdmin: true, userId: 'other', plan: 'lifetime' });
     expect(createData).not.toHaveProperty('isAdmin');

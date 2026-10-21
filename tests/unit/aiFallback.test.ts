@@ -1,13 +1,31 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { AI_BUSY_MSG, AI_DAILY_QUOTA_MSG, AI_INVALID_KEY_MSG, AI_PAID_ONLY_MSG, TEXT_MODEL_FALLBACKS, aiErrorResponse, generateWithFallback, isModelBusyError, isQuotaError } from '../../src/lib/aiFallback';
+import { AI_BUSY_MSG, AI_DAILY_QUOTA_MSG, AI_INVALID_KEY_MSG, AI_PAID_ONLY_MSG, IMAGE_MODEL_FALLBACKS, TEXT_MODEL_FALLBACKS, aiErrorResponse, generateWithFallback, isModelBusyError, isModelGoneError, isQuotaError } from '../../src/lib/aiFallback';
 import { SERVER_MESSAGES } from '../../src/i18n/serverMessages';
 
 const quota = () => Object.assign(new Error('{"error":{"code":429,"message":"You exceeded your current quota","status":"RESOURCE_EXHAUSTED"}}'), { status: 429 });
 const busy = () => Object.assign(new Error('{"error":{"code":503,"message":"This model is currently experiencing high demand.","status":"UNAVAILABLE"}}'), { status: 503 });
 const internal = () => Object.assign(new Error('{"error":{"code":500,"message":"An internal error has occurred.","status":"INTERNAL"}}'), { status: 500 });
 const invalidKey = () => Object.assign(new Error('{"error":{"code":400,"message":"API key not valid.","status":"INVALID_ARGUMENT"}}'), { status: 400 });
+const closedToNewKeys = () => Object.assign(new Error('{"error":{"code":404,"message":"This model models/gemini-2.5-flash-image is no longer available to new users. Please update your code to use a newer model for the latest features and improvements.","status":"NOT_FOUND"}}'), { status: 404 });
+const unknownModel = () => Object.assign(new Error('{"error":{"code":404,"message":"models/gemini-9-flash is not found for API version v1beta, or is not supported for generateContent.","status":"NOT_FOUND"}}'), { status: 404 });
+
+describe('isModelGoneError', () => {
+  it('recognises a model that is retired, unknown, or closed to new keys', () => {
+    expect(isModelGoneError(closedToNewKeys())).toBe(true);
+    expect(isModelGoneError(unknownModel())).toBe(true);
+    expect(isModelGoneError({ status: 'NOT_FOUND' })).toBe(true);
+    expect(isModelGoneError(new Error('{"error":{"code":404,"message":"gone","status":"NOT_FOUND"}}'))).toBe(true);
+  });
+
+  it('does not mistake a quota problem, an overload or a bad key for a missing model', () => {
+    expect(isModelGoneError(quota())).toBe(false);
+    expect(isModelGoneError(busy())).toBe(false);
+    expect(isModelGoneError(invalidKey())).toBe(false);
+    expect(isModelGoneError(null)).toBe(false);
+  });
+});
 
 describe('isModelBusyError', () => {
   it('recognises an overloaded or failing model on Google\'s side', () => {
@@ -65,6 +83,24 @@ describe('generateWithFallback', () => {
       return `answer from ${model}`;
     });
     await expect(generateWithFallback(['a', 'b', 'c'], generate)).resolves.toEqual({ result: 'answer from c', model: 'c' });
+  });
+
+  it('moves on when Google has retired a model or closed it to new keys (404)', async () => {
+    const generate = vi.fn(async (model: string) => {
+      if (model === 'a') throw unknownModel();
+      if (model === 'b') throw closedToNewKeys();
+      return `answer from ${model}`;
+    });
+    await expect(generateWithFallback(['a', 'b', 'c'], generate)).resolves.toEqual({ result: 'answer from c', model: 'c' });
+  });
+
+  it('reports the quota answer rather than a missing model when every model fails, so the seller learns what to do', async () => {
+    const generate = vi.fn(async (model: string) => {
+      if (model === 'a') throw quota();
+      throw closedToNewKeys();
+    });
+    await expect(generateWithFallback(['a', 'b', 'c'], generate)).rejects.toMatchObject({ status: 429 });
+    expect(generate).toHaveBeenCalledTimes(3);
   });
 
   it('stops at once on any other error, such as an invalid key', async () => {
@@ -138,5 +174,18 @@ describe('TEXT_MODEL_FALLBACKS', () => {
   it('lists each model once', () => {
     expect(new Set(TEXT_MODEL_FALLBACKS).size).toBe(TEXT_MODEL_FALLBACKS.length);
     expect(TEXT_MODEL_FALLBACKS.length).toBeGreaterThan(1);
+  });
+});
+
+describe('IMAGE_MODEL_FALLBACKS', () => {
+  it('starts with the image model the browser asks for', () => {
+    const client = fs.readFileSync(path.resolve(__dirname, '../../src/services/gemini.ts'), 'utf8');
+    const clientModel = /export const IMAGE_MODEL_NAME = "([^"]+)"/.exec(client)?.[1];
+    expect(IMAGE_MODEL_FALLBACKS[0]).toBe(clientModel);
+  });
+
+  it('keeps older image models behind it, each once, for keys that cannot use the newest', () => {
+    expect(new Set(IMAGE_MODEL_FALLBACKS).size).toBe(IMAGE_MODEL_FALLBACKS.length);
+    expect(IMAGE_MODEL_FALLBACKS.length).toBeGreaterThan(1);
   });
 });

@@ -11,6 +11,7 @@ import LanguageSwitcher from './components/LanguageSwitcher';
 import ThemeToggle from './components/ThemeToggle';
 import LockedTool from './components/LockedTool';
 import ErrorBoundary from './components/ErrorBoundary';
+import { SectionPicture } from './components/ui/SectionPicture';
 import { useLanguage } from './context/LanguageContext';
 import { useAuth, type PlanId } from './context/AuthContext';
 import { cn } from './lib/utils';
@@ -270,7 +271,10 @@ export default function AppShell() {
             <Menu size={18} />
           </button>
           {/* on wide screens the sidebar and the page heading already say where you are */}
-          <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-fg lg:invisible">{title}</p>
+          <p className="flex min-w-0 flex-1 items-center gap-2 text-[15px] font-semibold text-fg lg:invisible">
+            <SectionPicture id={activeTab} size={20} />
+            <span className="truncate">{title}</span>
+          </p>
           {isMock && (
             <span className="rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning-ink">DEV</span>
           )}

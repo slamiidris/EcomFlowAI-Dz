@@ -1,28 +1,16 @@
-import {
-  BookImage,
-  Clapperboard,
-  Coins,
-  FolderKanban,
-  Layers,
-  LayoutDashboard,
-  Megaphone,
-  Palette,
-  Wand2,
-  type LucideIcon,
-} from 'lucide-react';
-
 export type NavItem =
   | 'dashboard' | 'projects' | 'video' | 'landing' | 'ads' | 'brand' | 'assets' | 'assembler' | 'calculator'
   | 'settings' | 'contact'
+  | 'images'
   // built tools that are not linked from the sidebar
-  | 'trends' | 'images' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
+  | 'trends' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
 
+/** A sidebar entry; its picture comes from src/lib/sections.ts. */
 export interface NavEntry {
   id: NavItem;
   /** Translation key + French fallback for the sidebar label. */
   labelKey: string;
   fallback: string;
-  icon: LucideIcon;
 }
 
 export interface NavGroup {
@@ -39,8 +27,8 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: 'navGroupWorkspace',
     fallback: 'Espace de travail',
     items: [
-      { id: 'dashboard', labelKey: 'menuDashboard', fallback: 'Tableau de bord', icon: LayoutDashboard },
-      { id: 'projects', labelKey: 'menuProjects', fallback: 'Campagnes', icon: FolderKanban },
+      { id: 'dashboard', labelKey: 'menuDashboard', fallback: 'Tableau de bord' },
+      { id: 'projects', labelKey: 'menuProjects', fallback: 'Campagnes' },
     ],
   },
   {
@@ -48,9 +36,10 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: 'navGroupStudios',
     fallback: 'Studios',
     items: [
-      { id: 'landing', labelKey: 'menuLanding', fallback: 'Landing pages', icon: Wand2 },
-      { id: 'video', labelKey: 'menuVideo', fallback: 'Pubs vidéo', icon: Clapperboard },
-      { id: 'ads', labelKey: 'menuAds', fallback: 'Publicités', icon: Megaphone },
+      { id: 'landing', labelKey: 'menuLanding', fallback: 'Landing pages' },
+      { id: 'images', labelKey: 'tabImages', fallback: 'Studio Photos Produit' },
+      { id: 'video', labelKey: 'menuVideo', fallback: 'Pubs vidéo' },
+      { id: 'ads', labelKey: 'menuAds', fallback: 'Publicités' },
     ],
   },
   {
@@ -58,8 +47,8 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: 'navGroupLibrary',
     fallback: 'Bibliothèque',
     items: [
-      { id: 'brand', labelKey: 'menuBrand', fallback: 'Identité de marque', icon: Palette },
-      { id: 'assets', labelKey: 'menuAssets', fallback: 'Fichiers', icon: BookImage },
+      { id: 'brand', labelKey: 'menuBrand', fallback: 'Identité de marque' },
+      { id: 'assets', labelKey: 'menuAssets', fallback: 'Fichiers' },
     ],
   },
   {
@@ -67,8 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: 'navGroupTools',
     fallback: 'Outils',
     items: [
-      { id: 'assembler', labelKey: 'menuAssembler', fallback: 'Constructeur de page', icon: Layers },
-      { id: 'calculator', labelKey: 'menuCalculator', fallback: 'Calcul de marge COD', icon: Coins },
+      { id: 'assembler', labelKey: 'menuAssembler', fallback: 'Constructeur de page' },
+      { id: 'calculator', labelKey: 'menuCalculator', fallback: 'Calcul de marge COD' },
     ],
   },
 ];
@@ -94,7 +83,7 @@ export const TAB_TITLES: Record<NavItem, { key: string; fallback: string }> = {
   catalog: { key: 'tabCatalog', fallback: 'Catalogue produits' },
   scout: { key: 'tabScout', fallback: 'Scout Telegram' },
   calendar: { key: 'tabCalendar', fallback: 'Calendrier de contenu' },
-  images: { key: 'tabImages', fallback: 'Studio photos produit' },
+  images: { key: 'tabImages', fallback: 'Studio Photos Produit' },
   contact: { key: 'menuContact', fallback: 'Contact & support' },
 };
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  Upload, Trash2, Download, Plus, Loader2, Layers, Sparkles,
+  Upload, Trash2, Download, Plus, Loader2, Sparkles,
   Check, Eye, Monitor, Smartphone, X, GripVertical,
   Maximize2, Settings2, Wand2, FileImage, Type
 } from 'lucide-react';
@@ -212,7 +212,7 @@ export default function LandingAssembler() {
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-32">
       <PageHeader
-        icon={Layers}
+        section="assembler"
         title={t('menuAssembler', 'Constructeur de page')}
         subtitle={t('lpbImportezSectionsReorganisezAss', 'Importez les sections → Réorganisez → Assemblez → Téléchargez')}
         actions={<>

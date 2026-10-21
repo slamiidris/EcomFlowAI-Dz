@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { SectionId } from '../lib/sections';
 import { cn } from '../lib/utils';
+import { SectionTile } from './ui/SectionPicture';
 
 interface Props {
-  /** The tool's sidebar icon, so the page and the menu look alike. */
-  icon: LucideIcon;
+  /** The section the page belongs to: its picture is the one in the sidebar, so the page and the menu look alike. */
+  section: SectionId;
   /** The tool's sidebar name. */
   title: string;
   subtitle?: string;
@@ -13,14 +14,12 @@ interface Props {
   className?: string;
 }
 
-/** The title block every tool page starts with: same size, same place, same icon as in the sidebar. */
-export default function PageHeader({ icon: Icon, title, subtitle, actions, className }: Props) {
+/** The title block every tool page starts with: same size, same place, same picture as in the sidebar. */
+export default function PageHeader({ section, title, subtitle, actions, className }: Props) {
   return (
     <header className={cn('flex flex-wrap items-center justify-between gap-4', className)}>
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary-ink">
-          <Icon size={20} />
-        </span>
+        <SectionTile id={section} />
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
           {subtitle && <p className="mt-0.5 text-sm text-fg-muted">{subtitle}</p>}

@@ -233,7 +233,7 @@ export default function ProjectWorkspace({ projectId }: { projectId: string }) {
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === 'brief' && <BriefPanel project={project} gen={gen} onOpen={setTab} />}
         {tab === 'landing' && <LandingPanel project={project} gen={gen} />}
-        {tab === 'video' && <VideoPanel project={project} gen={gen} />}
+        {tab === 'video' && <VideoPanel project={project} gen={gen} kit={kit} />}
         {tab === 'ads' && <AdsPanel project={project} gen={gen} kit={kit} />}
         {tab === 'publish' && <PublishPanel project={project} />}
       </div>

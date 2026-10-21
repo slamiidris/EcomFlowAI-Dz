@@ -969,9 +969,9 @@ export const funnelsTranslations: TranslationDictionary = {
     en: "AI images for the sections",
   },
   lppAiIntro: {
-    fr: "L'IA crée une image pour chaque section à partir de ta photo produit. Il faut une clé Gemini avec facturation.",
-    ar: "ينشئ الذكاء الاصطناعي صورة لكل قسم انطلاقاً من صورة منتجك. يلزم مفتاح Gemini مع تفعيل الفوترة.",
-    en: "The AI creates an image for each section from your product photo. You need a Gemini key with billing.",
+    fr: "L'IA crée une image pour chaque section à partir de ta photo produit. Il faut une clé Gemini avec facturation, ou le service choisi dans Paramètres.",
+    ar: "ينشئ الذكاء الاصطناعي صورة لكل قسم انطلاقاً من صورة منتجك. يلزم مفتاح Gemini مع تفعيل الفوترة، أو الخدمة المختارة في الإعدادات.",
+    en: "The AI creates an image for each section from your product photo. You need a Gemini key with billing, or the service chosen in Settings.",
   },
   lppAiGenerate: {
     fr: "Générer les images IA ({count} sections)",
@@ -992,6 +992,256 @@ export const funnelsTranslations: TranslationDictionary = {
     fr: "Ajoute d'abord une photo du produit dans le formulaire : l'IA en a besoin pour garder ton vrai produit.",
     ar: "أضف أولاً صورة المنتج في النموذج: يحتاجها الذكاء الاصطناعي ليحافظ على منتجك الحقيقي.",
     en: "First add a product photo in the form: the AI needs it to keep your real product.",
+  },
+  lppTemplate: {
+    fr: "Style de la page",
+    ar: "تصميم الصفحة",
+    en: "Page style",
+  },
+  lppSmallPhotos: {
+    fr: "Certaines de tes photos sont petites ({width} px de large) : en grand sur la page, elles seront floues. Ajoute des photos d'au moins 800 px de large, ou crée les affiches IA.",
+    ar: "بعض صورك صغيرة (عرضها {width} بكسل): ستظهر ضبابية عند تكبيرها في الصفحة. أضف صوراً بعرض 800 بكسل على الأقل، أو أنشئ الملصقات بالذكاء الاصطناعي.",
+    en: "Some of your photos are small ({width} px wide): shown large on the page, they will look blurry. Add photos at least 800 px wide, or make the AI posters.",
+  },
+  lppTplPoster: {
+    fr: "Affiche (image longue)",
+    ar: "ملصق (صورة طويلة)",
+    en: "Poster (long image)",
+  },
+  lppTplPosterHint: {
+    fr: "Une longue image faite de photos, puis le formulaire : le format des boutiques algériennes.",
+    ar: "صورة طويلة مكوّنة من الصور ثم استمارة الطلب: الشكل الذي تستعمله المتاجر الجزائرية.",
+    en: "One long image made of pictures, then the order form: the format Algerian shops use.",
+  },
+  lppPosterColors: {
+    fr: "Couleurs de l'affiche",
+    ar: "ألوان الملصق",
+    en: "Poster colours",
+  },
+  lppPosterBlue: {
+    fr: "Bleu et jaune",
+    ar: "أزرق وأصفر",
+    en: "Blue and yellow",
+  },
+  lppPosterProduct: {
+    fr: "Couleurs du produit",
+    ar: "ألوان المنتج",
+    en: "Product colours",
+  },
+  lppPosterTitle: {
+    fr: "Affiches IA (le texte dans l'image)",
+    ar: "ملصقات بالذكاء الاصطناعي (النص داخل الصورة)",
+    en: "AI posters (the words in the picture)",
+  },
+  lppServiceNoPhoto: {
+    fr: "Le service d’images choisi dans Paramètres (Cloudflare) ne garde pas ton produit : choisis Gemini, OpenAI ou FLUX pour les images de ta page.",
+    ar: "خدمة الصور المختارة في الإعدادات (Cloudflare) لا تحافظ على منتجك: اختر Gemini أو OpenAI أو FLUX لصور صفحتك.",
+    en: "The image service chosen in Settings (Cloudflare) does not keep your product: choose Gemini, OpenAI or FLUX for your page's images.",
+  },
+  lppPosterIntro: {
+    fr: "L'IA dessine chaque section comme une affiche à partir de ta photo, avec son titre, ses avantages et un bouton de commande, comme les longues images des boutiques. Il faut une clé Gemini avec facturation (environ 0,04 $ par affiche), ou le service choisi dans Paramètres.",
+    ar: "يرسم الذكاء الاصطناعي كل قسم كملصق انطلاقاً من صورتك، مع عنوانه ومزاياه وزر الطلب، مثل الصور الطويلة للمتاجر. يلزم مفتاح Gemini مع تفعيل الفوترة (حوالي 0.04 دولار للملصق)، أو الخدمة المختارة في الإعدادات.",
+    en: "The AI draws each section as a poster from your photo, with its title, benefits and an order button, like shops' long images. You need a Gemini key with billing (about $0.04 per poster), or the service chosen in Settings.",
+  },
+  lppPosterGenerate: {
+    fr: "Créer les affiches IA ({count})",
+    ar: "إنشاء الملصقات ({count})",
+    en: "Make the AI posters ({count})",
+  },
+  lppPosterCheck: {
+    fr: "Vérifie le texte de chaque affiche : si un mot est mal écrit, refais-la.",
+    ar: "تحقق من نص كل ملصق: إذا كانت كلمة مكتوبة بشكل خاطئ، أعد إنشاءه.",
+    en: "Check the words on each poster: if one is misspelled, redo that poster.",
+  },
+  lppSectionN: {
+    fr: "Section {n}",
+    ar: "القسم {n}",
+    en: "Section {n}",
+  },
+  lppRedo: {
+    fr: "Refaire",
+    ar: "إعادة",
+    en: "Redo",
+  },
+  lppRedoLabel: {
+    fr: "Refaire l'image de la section {n}",
+    ar: "إعادة صورة القسم {n}",
+    en: "Redo the image of section {n}",
+  },
+  lppRemove: {
+    fr: "Retirer",
+    ar: "حذف",
+    en: "Remove",
+  },
+  lppRemoveLabel: {
+    fr: "Retirer l'image de la section {n}",
+    ar: "حذف صورة القسم {n}",
+    en: "Remove the image of section {n}",
+  },
+  lppLongImage: {
+    fr: "Télécharger l'image longue (JPG)",
+    ar: "تنزيل الصورة الطويلة (JPG)",
+    en: "Download the long image (JPG)",
+  },
+  lppLongImageHint: {
+    fr: "Toutes les affiches en une seule image, à mettre dans ta boutique (YouCan, Shopify…).",
+    ar: "كل الملصقات في صورة واحدة لتضعها في متجرك (YouCan، Shopify…).",
+    en: "All the posters in one image, for your shop (YouCan, Shopify…).",
+  },
+  lppLongImageError: {
+    fr: "L'image longue n'a pas pu être créée. Réessaie.",
+    ar: "تعذّر إنشاء الصورة الطويلة. أعد المحاولة.",
+    en: "The long image could not be made. Try again.",
+  },
+  lppTplImpact: {
+    fr: "Impact",
+    ar: "قوي",
+    en: "Impact",
+  },
+  lppTplImpactHint: {
+    fr: "Lumineux et direct : pour la plupart des produits.",
+    ar: "مضيء ومباشر: يناسب أغلب المنتجات.",
+    en: "Bright and direct: right for most products.",
+  },
+  lppTplElegance: {
+    fr: "Élégance",
+    ar: "أنيق",
+    en: "Elegance",
+  },
+  lppTplEleganceHint: {
+    fr: "Ivoire et serif : beauté, parfums, bijoux, mode.",
+    ar: "عاجي وراقٍ: للتجميل والعطور والمجوهرات والأزياء.",
+    en: "Ivory and serif: beauty, perfume, jewellery, fashion.",
+  },
+  lppTplNuit: {
+    fr: "Nuit",
+    ar: "ليلي",
+    en: "Night",
+  },
+  lppTplNuitHint: {
+    fr: "Sombre et lumineux : high-tech, accessoires, auto.",
+    ar: "داكن ومتوهج: للإلكترونيات والإكسسوارات والسيارات.",
+    en: "Dark and glowing: tech, accessories, cars.",
+  },
+  lppStoreName: {
+    fr: "Nom de ta boutique (optionnel)",
+    ar: "اسم متجرك (اختياري)",
+    en: "Your shop's name (optional)",
+  },
+  lppDelivery: {
+    fr: "Livraison",
+    ar: "التوصيل",
+    en: "Delivery",
+  },
+  lppDeliveryByWilaya: {
+    fr: "Selon la wilaya",
+    ar: "حسب الولاية",
+    en: "Depends on the wilaya",
+  },
+  lppDeliveryByWilayaHint: {
+    fr: "Tu confirmes le prix de la livraison au téléphone avec le client.",
+    ar: "تؤكد سعر التوصيل مع الزبون عبر الهاتف.",
+    en: "You confirm the delivery price with the customer on the phone.",
+  },
+  lppDeliveryFree: {
+    fr: "Gratuite",
+    ar: "مجاني",
+    en: "Free",
+  },
+  lppDeliveryFixed: {
+    fr: "Prix fixe",
+    ar: "سعر ثابت",
+    en: "Fixed price",
+  },
+  lppDeliveryFee: {
+    fr: "Prix de la livraison",
+    ar: "سعر التوصيل",
+    en: "Delivery price",
+  },
+  lppPromises: {
+    fr: "Ce que tu promets à tes clients",
+    ar: "ما تعد به زبائنك",
+    en: "What you promise your customers",
+  },
+  lppPromisesHint: {
+    fr: "Coche seulement ce que tu offres vraiment : ces promesses s'affichent sur ta page. La section garantie écrite par l'IA n'apparaît que si tu offres une garantie ou la vérification avant paiement.",
+    ar: "اختر فقط ما تقدمه فعلاً: هذه الوعود تظهر في صفحتك. قسم الضمان الذي كتبه الذكاء الاصطناعي لا يظهر إلا إذا كنت تقدم ضماناً أو المعاينة قبل الدفع.",
+    en: "Tick only what you really offer: these promises appear on your page. The guarantee section the AI wrote only shows if you offer a guarantee or a check before paying.",
+  },
+  lppPromiseCod: {
+    fr: "Paiement à la livraison (toujours)",
+    ar: "الدفع عند الاستلام (دائماً)",
+    en: "Cash on delivery (always)",
+  },
+  lppPromiseNationwide: {
+    fr: "Livraison dans les 58 wilayas",
+    ar: "التوصيل إلى 58 ولاية",
+    en: "Delivery to all 58 wilayas",
+  },
+  lppPromiseInspection: {
+    fr: "Le client vérifie le produit avant de payer",
+    ar: "الزبون يعاين المنتج قبل الدفع",
+    en: "The customer checks the product before paying",
+  },
+  lppPromiseGuarantee: {
+    fr: "Garantie de qualité",
+    ar: "ضمان الجودة",
+    en: "Quality guarantee",
+  },
+  lppReviews: {
+    fr: "Avis de vrais clients (optionnel)",
+    ar: "آراء زبائن حقيقيين (اختياري)",
+    en: "Reviews from real customers (optional)",
+  },
+  lppReviewsIntro: {
+    fr: "Les avis écrits par l'IA sont inventés : ils ne sont jamais publiés. Ajoute ceux de tes vrais clients, en texte ou en captures d'écran (WhatsApp, Messenger…).",
+    ar: "الآراء التي يكتبها الذكاء الاصطناعي مُختلَقة: لا تُنشر أبداً. أضف آراء زبائنك الحقيقيين، نصاً أو لقطات شاشة (واتساب، ماسنجر…).",
+    en: "Reviews written by the AI are made up: they are never published. Add your real customers' reviews, as text or screenshots (WhatsApp, Messenger…).",
+  },
+  lppReviewName: {
+    fr: "Nom du client (et ville)",
+    ar: "اسم الزبون (والمدينة)",
+    en: "Customer's name (and town)",
+  },
+  lppReviewText: {
+    fr: "Ce qu’il a dit",
+    ar: "ما قاله",
+    en: "What they said",
+  },
+  lppReviewRemove: {
+    fr: "Retirer cet avis",
+    ar: "حذف هذا الرأي",
+    en: "Remove this review",
+  },
+  lppReviewAdd: {
+    fr: "Ajouter un avis",
+    ar: "إضافة رأي",
+    en: "Add a review",
+  },
+  lppShotsAdd: {
+    fr: "Ajouter des captures d’écran",
+    ar: "إضافة لقطات شاشة",
+    en: "Add screenshots",
+  },
+  lppShotRemove: {
+    fr: "Retirer cette capture",
+    ar: "حذف هذه اللقطة",
+    en: "Remove this screenshot",
+  },
+  lppShotAlt: {
+    fr: "Capture d’avis {n}",
+    ar: "لقطة رأي {n}",
+    en: "Review screenshot {n}",
+  },
+  lppShotsError: {
+    fr: "Cette image n'a pas pu être ajoutée (formats acceptés : JPG, PNG, WebP).",
+    ar: "تعذّرت إضافة هذه الصورة (الصيغ المقبولة: JPG وPNG وWebP).",
+    en: "This image could not be added (accepted formats: JPG, PNG, WebP).",
+  },
+  lppCheckCopy: {
+    fr: "Relis les textes avant de publier : l'IA peut inventer des détails (délais de livraison, stock, chiffres, caractéristiques). Corrige ce qui n'est pas vrai pour ton produit.",
+    ar: "راجع النصوص قبل النشر: قد يختلق الذكاء الاصطناعي تفاصيل (مدة التوصيل، المخزون، الأرقام، المواصفات). صحّح ما ليس صحيحاً عن منتجك.",
+    en: "Read the copy before publishing: the AI can invent details (delivery times, stock, figures, specs). Fix whatever is not true of your product.",
   },
   lpgLangEnglish: {
     fr: "Anglais",

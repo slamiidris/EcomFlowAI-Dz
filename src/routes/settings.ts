@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { encryptSecret, maskSecret } from "../lib/crypto";
+import { DEFAULT_IMAGE_PROVIDER } from "../lib/imageProviders";
 import { requireAuth, SessionPayload } from "../lib/session";
 import {
   buildSettingsWrite,
@@ -21,6 +22,11 @@ const DEFAULT_SETTINGS = {
   snapAdsToken: "",
   snapAccountId: "",
   geminiApiKey: "",
+  imageProvider: DEFAULT_IMAGE_PROVIDER,
+  openaiApiKey: "",
+  falApiKey: "",
+  cloudflareAccountId: "",
+  cloudflareApiToken: "",
   workspaceName: DEFAULT_WORKSPACE_NAME,
   customApiToken: "",
 };

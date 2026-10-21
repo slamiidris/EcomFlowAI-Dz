@@ -5,7 +5,6 @@ import {
   Copy, 
   Check, 
   FileText,
-  Wand2,
   Download,
   Layout, 
   Image as ImageIcon, 
@@ -1145,7 +1144,7 @@ export default function LandingPageGenerator() {
   return (
     <div className="mixed-dir space-y-8">
       <PageHeader
-        icon={Wand2}
+        section="landing"
         title={t('menuLanding', 'Landing pages')}
         subtitle={t('lpgStructurezPagesVenteMaximiser', 'Structurez vos pages de vente pour maximiser les commandes COD.')}
         actions={<>

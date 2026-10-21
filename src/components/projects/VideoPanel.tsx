@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { formatRelative } from '../../i18n/dates';
 import { VIDEO_STYLES } from '../../lib/campaignContext';
 import { Segmented, Skeleton, StatusChip } from '../ui/primitives';
+import type { BrandKit } from '../../services/campaigns';
 import type { ProjectHandle } from './useProject';
 import { DEFAULT_VIDEO_OPTIONS, type Generators, type VideoOptions, type VideoOutput } from './useGenerators';
 import { GenerateState, VersionPicker } from './OutputControls';
@@ -47,7 +48,7 @@ function OptionsForm({ value, onChange }: { value: VideoOptions; onChange: (v: V
   );
 }
 
-export default function VideoPanel({ project, gen }: { project: ProjectHandle; gen: Generators }) {
+export default function VideoPanel({ project, gen, kit }: { project: ProjectHandle; gen: Generators; kit: BrandKit | null }) {
   const { t, language } = useLanguage();
   const p = project.detail!.project;
   const output = project.detail!.outputs.video as { version: number; createdAt: string; data: VideoOutput } | undefined;
@@ -124,7 +125,7 @@ export default function VideoPanel({ project, gen }: { project: ProjectHandle; g
             <Skeleton className="h-[520px] w-full" />
           ) : (
             <Suspense fallback={<Skeleton className="h-[520px] w-full" />}>
-              <VideoMaker key={output.version} script={script} format={output.data.options.format} photos={photos} price={p.price} productName={p.productName || p.name} />
+              <VideoMaker key={output.version} script={script} format={output.data.options.format} photos={photos} price={p.price} productName={p.productName || p.name} accent={kit?.colors?.[0]} />
             </Suspense>
           )}
         </div>

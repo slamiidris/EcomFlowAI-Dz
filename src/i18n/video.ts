@@ -873,6 +873,16 @@ export const videoTranslations: TranslationDictionary = {
     ar: "الفيديو بدون صوت: أضف الموسيقى أو التعليق الصوتي في TikTok أو CapCut أو Instagram قبل النشر.",
     en: "The video has no sound: add your music or voice-over in TikTok, CapCut or Instagram before posting.",
   },
+  vmMusic: {
+    fr: "Ajouter une musique de fond",
+    ar: "إضافة موسيقى خلفية",
+    en: "Add background music",
+  },
+  vmMusicNote: {
+    fr: "La musique est créée pour ta vidéo, sans droits à payer. Les scènes filmées par l'IA gardent leur propre son.",
+    ar: "تُنشأ الموسيقى خصيصاً لفيديوك، دون حقوق يجب دفعها. المشاهد التي يصوّرها الذكاء الاصطناعي تحتفظ بصوتها الخاص.",
+    en: "The music is made for your video, with no rights to pay. Scenes filmed by the AI keep their own sound.",
+  },
   vmPreview: {
     fr: "Aperçu",
     ar: "معاينة",
@@ -889,14 +899,14 @@ export const videoTranslations: TranslationDictionary = {
     en: "{format} format",
   },
   vmAiTitle: {
-    fr: "Clips vidéo IA (Google Veo)",
-    ar: "مقاطع فيديو بالذكاء الاصطناعي (Google Veo)",
-    en: "AI video clips (Google Veo)",
+    fr: "Vidéo filmée par l'IA (Google Gemini)",
+    ar: "فيديو يصوّره الذكاء الاصطناعي (Google Gemini)",
+    en: "AI-filmed video (Google Gemini)",
   },
   vmAiIntro: {
-    fr: "L'IA filme une vraie vidéo pour chaque scène (8 s), à partir de ta photo. Il faut une clé Gemini avec facturation : Google facture chaque seconde générée sur ton compte.",
-    ar: "يصوّر الذكاء الاصطناعي فيديو حقيقياً لكل مشهد (8 ثوانٍ) انطلاقاً من صورتك. يلزم مفتاح Gemini مع تفعيل الفوترة: تحتسب Google كل ثانية يتم إنشاؤها على حسابك.",
-    en: "The AI films a real video for each scene (8 s), starting from your photo. You need a Gemini key with billing: Google charges each generated second to your account.",
+    fr: "L'IA filme une vraie vidéo avec musique pour chaque scène (environ 8 s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Il faut une clé Gemini avec facturation : Google facture environ 0,10 $ par seconde filmée, soit environ {cost} $ pour les scènes restantes.",
+    ar: "يصوّر الذكاء الاصطناعي فيديو حقيقياً مع موسيقى لكل مشهد (حوالي 8 ثوانٍ) انطلاقاً من صورتك، وتُضاف نصوصك فوقه. يلزم مفتاح Gemini مع تفعيل الفوترة: تحتسب Google حوالي 0.10 دولار لكل ثانية مصوَّرة، أي حوالي {cost} دولار للمشاهد المتبقية.",
+    en: "The AI films a real video with music for each scene (about 8 s), starting from your photo; your words are added on top. You need a Gemini key with billing: Google charges about $0.10 per filmed second, so about ${cost} for the remaining scenes.",
   },
   vmAiGenerate: {
     fr: "Générer les clips IA ({count} scènes)",

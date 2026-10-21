@@ -8,7 +8,8 @@ import { isPlaceholderGuide } from '../lib/dashboardContent';
 
 const router = Router();
 
-// Subset of API_FIELDS that holds secrets (encrypted at rest, masked on read).
+// Subset of API_FIELDS that holds secrets (encrypted at rest, masked on read). The image services' keys are not
+// edited here but are masked too, since a saved row is sent back whole.
 const SECRET_API_FIELDS = [
   'facebookAdsToken',
   'tiktokAdsToken',
@@ -16,6 +17,9 @@ const SECRET_API_FIELDS = [
   'snapAdsToken',
   'geminiApiKey',
   'customApiToken',
+  'openaiApiKey',
+  'falApiKey',
+  'cloudflareApiToken',
 ] as const;
 
 function maskApiSettings(apiSettings: Record<string, any> | null | undefined) {

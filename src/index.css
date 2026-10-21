@@ -579,6 +579,43 @@ html:not(.dark) {
     }
   }
 
+  /* A section's picture (a 3D emoji), and the soft halo of the section's colour behind it on cards and headers */
+  .section-pic {
+    flex: none;
+    user-select: none;
+    -webkit-user-drag: none;
+    transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .section-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    border-radius: 1rem;
+    background: radial-gradient(circle at 32% 26%, color-mix(in oklab, var(--glow) 36%, transparent), color-mix(in oklab, var(--glow) 9%, transparent) 74%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--glow) 24%, transparent);
+  }
+  .section-tile .section-pic {
+    filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.22));
+  }
+  /* a small lift under the pointer: the menu (used all day) barely moves, the dashboard cards a little more */
+  @media (hover: hover) and (pointer: fine) {
+    .nav-item:hover .section-pic {
+      transform: scale(1.08);
+    }
+    .section-card:hover .section-pic {
+      transform: translateY(-2px) rotate(-6deg) scale(1.08);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .section-pic {
+      transition: none;
+    }
+    .nav-item:hover .section-pic,
+    .section-card:hover .section-pic {
+      transform: none;
+    }
+  }
+
   /* Auth brand panel: always dark, regardless of theme */
   .auth-brand {
     background:

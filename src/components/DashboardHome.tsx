@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarClock, Clapperboard, Coins, FolderKanban, KeyRound, Layers, Link2, Lock, Megaphone, Palette, Sparkles, Wand2, type LucideIcon } from 'lucide-react';
+import { ArrowRight, CalendarClock, KeyRound, Link2, Lock, Palette, Sparkles, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { hasActivePlan } from '../lib/access';
 import { attentionItems, type AttentionItem } from '../lib/attention';
@@ -11,6 +11,7 @@ import { dashboardApi, settingsApi, type AiUsageSummary } from '../services/api'
 import { metaApi, projectsApi, type MetaStatus, type ProjectSummary } from '../services/campaigns';
 import { AnnouncementsWidget, GuidesWidget, HotDealsWidget } from './DashboardContentWidgets';
 import { ImageDrop, Skeleton } from './ui/primitives';
+import { SectionPicture, SectionTile } from './ui/SectionPicture';
 import { ProjectCard } from './projects/ProjectList';
 import { useBrandKit } from './projects/useProject';
 import { setPendingPhotos } from './projects/pendingPhotos';
@@ -103,12 +104,17 @@ export default function DashboardHome() {
     { label: t('dashKpiVideoScripts', 'Scripts vidéo'), value: usageFailed ? '—' : usage?.videoScripts },
     { label: t('dashKpiTotalGen', 'Générations IA'), value: usageFailed ? '—' : usage?.totalGenerations },
   ];
-  const studios: { tab: NavItem; icon: LucideIcon; label: string; text: string }[] = [
-    { tab: 'landing', icon: Wand2, label: t('menuLanding', 'Landing pages'), text: t('toolLandingBlurb', 'Crée des tunnels de vente et la copie de ta landing page.') },
-    { tab: 'video', icon: Clapperboard, label: t('menuVideo', 'Pubs vidéo'), text: t('toolVideoBlurb', 'Génère des scripts de pubs vidéo TikTok et Facebook à fort potentiel.') },
-    { tab: 'ads', icon: Megaphone, label: t('menuAds', 'Publicités'), text: t('adsStudioSubtitle', 'Concepts, textes et visuels prêts pour Facebook et Instagram, à partir d’une de tes campagnes.') },
-    { tab: 'assembler', icon: Layers, label: t('menuAssembler', 'Constructeur de page'), text: t('toolAssemblerBlurb', 'Assemble visuellement ta landing page, section par section.') },
-    { tab: 'calculator', icon: Coins, label: t('menuCalculator', 'Calcul de marge COD'), text: t('toolCalculatorBlurb', 'Calcule tes marges et ton profit net en paiement à la livraison.') },
+  // every section of the menu, each with its picture, so the one you want is found at a glance
+  const sections: { tab: NavItem; label: string; text: string }[] = [
+    { tab: 'projects', label: t('menuProjects', 'Campagnes'), text: t('cmpListSubtitle', 'Une campagne réunit un produit, ses photos et tout ce que l’IA crée pour le vendre : landing page, vidéo et publicités.') },
+    { tab: 'landing', label: t('menuLanding', 'Landing pages'), text: t('toolLandingBlurb', 'Crée des tunnels de vente et la copie de ta landing page.') },
+    { tab: 'images', label: t('tabImages', 'Studio Photos Produit'), text: t('toolImagesBlurb', 'Ton vrai produit mis en scène : lifestyle, fond épuré, premium ou créatif.') },
+    { tab: 'video', label: t('menuVideo', 'Pubs vidéo'), text: t('toolVideoBlurb', 'Génère des scripts de pubs vidéo TikTok et Facebook à fort potentiel.') },
+    { tab: 'ads', label: t('menuAds', 'Publicités'), text: t('adsStudioSubtitle', 'Concepts, textes et visuels prêts pour Facebook et Instagram, à partir d’une de tes campagnes.') },
+    { tab: 'brand', label: t('menuBrand', 'Identité de marque'), text: t('brkSubtitle', 'Ton logo, tes couleurs et ta façon de parler. Chaque landing page, script et publicité les reprend.') },
+    { tab: 'assets', label: t('menuAssets', 'Fichiers'), text: t('libSubtitle', 'Toutes tes photos produit, tes visuels publicitaires et ton logo, au même endroit.') },
+    { tab: 'assembler', label: t('menuAssembler', 'Constructeur de page'), text: t('toolAssemblerBlurb', 'Assemble visuellement ta landing page, section par section.') },
+    { tab: 'calculator', label: t('menuCalculator', 'Calcul de marge COD'), text: t('toolCalculatorBlurb', 'Calcule tes marges et ton profit net en paiement à la livraison.') },
   ];
 
   return (
@@ -125,6 +131,22 @@ export default function DashboardHome() {
           </div>
           <ImageDrop onFiles={startWith} label={t('dashDropPhotos', 'Dépose les photos du produit')} hint={t('cmpPhotoFormats', 'JPG, PNG ou WebP · glisse-les ici ou clique')} className="min-h-52 bg-surface" />
         </div>
+      </section>
+
+      <section aria-labelledby="dash-sections">
+        <h2 id="dash-sections" className="mb-4 text-[15px] font-semibold text-fg">{t('dashQuickAccess', 'Accès rapide')}</h2>
+        {/* 9 sections: 3 rows of 3; on a phone, the campaigns across the top, then 4 rows of 2 */}
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {sections.map((s) => (
+            <li key={s.tab} className="max-md:first:col-span-2">
+              <button type="button" onClick={() => go(s.tab)} className="ui-card ui-card-hover section-card flex h-full w-full flex-col items-start gap-3 p-4 text-start">
+                <SectionTile id={s.tab} size="lg" />
+                <span className="text-sm font-semibold text-fg">{s.label}</span>
+                <span className="line-clamp-2 text-[13px] leading-relaxed text-fg-muted max-sm:hidden">{s.text}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -146,7 +168,7 @@ export default function DashboardHome() {
             <div className="grid gap-5 sm:grid-cols-2">{[0, 1].map((i) => <Skeleton key={i} className="aspect-[4/3] w-full" />)}</div>
           ) : active.length === 0 ? (
             <div className="rounded-[var(--radius-lg)] border border-dashed border-line-strong p-8 text-center">
-              <FolderKanban size={22} className="mx-auto text-primary-ink" aria-hidden="true" />
+              <SectionPicture id="projects" size={44} className="mx-auto" />
               <p className="mt-3 text-sm font-medium text-fg">{t('dashNoCampaign', 'Pas encore de campagne.')}</p>
               <p className="mt-1 text-[13px] text-fg-muted">{t('dashNoCampaignText', 'Ta première campagne apparaîtra ici avec sa landing page, sa vidéo et ses publicités.')}</p>
             </div>
@@ -180,21 +202,6 @@ export default function DashboardHome() {
           </section>
         </div>
       </div>
-
-      <section aria-labelledby="dash-studios">
-        <h2 id="dash-studios" className="mb-4 text-[15px] font-semibold text-fg">{t('dashStudios', 'Studios et outils')}</h2>
-        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
-          {studios.map((s) => (
-            <li key={s.tab}>
-              <button type="button" onClick={() => go(s.tab)} className="ui-card ui-card-hover flex h-full w-full flex-col items-start gap-3 p-4 text-start">
-                <span className="grid size-9 place-items-center rounded-[var(--radius-sm)] bg-primary/10 text-primary-ink"><s.icon size={17} /></span>
-                <span className="text-sm font-semibold text-fg">{s.label}</span>
-                <span className="line-clamp-2 text-[13px] leading-relaxed text-fg-muted max-sm:hidden">{s.text}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       {/* each widget hides itself when it has nothing to show; whatever is left fills the row */}
       <div className="flex flex-col gap-6 xl:flex-row xl:items-start">

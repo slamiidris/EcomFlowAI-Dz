@@ -84,7 +84,7 @@ export default function AssetLibrary() {
 
   return (
     <div className="space-y-8">
-      <PageHeader icon={BookImage} title={t('menuAssets', 'Fichiers')} subtitle={t('libSubtitle', 'Toutes tes photos produit, tes visuels publicitaires et ton logo, au même endroit.')} />
+      <PageHeader section="assets" title={t('menuAssets', 'Fichiers')} subtitle={t('libSubtitle', 'Toutes tes photos produit, tes visuels publicitaires et ton logo, au même endroit.')} />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-5">

@@ -254,9 +254,9 @@ export const homeTranslations: TranslationDictionary = {
     en: "MP4 export (or WebM depending on the browser), without sound",
   },
   homeVideoPoint3: {
-    fr: "Plans vidéo générés par IA (Veo) en option, avec la facturation Google",
-    ar: "لقطات فيديو بالذكاء الاصطناعي (Veo) اختيارية، مع تفعيل الفوترة لدى Google",
-    en: "Optional AI video clips (Veo), with Google billing enabled",
+    fr: "Vidéo filmée par l'IA (Google Gemini) en option, avec la facturation Google",
+    ar: "فيديو يصوّره الذكاء الاصطناعي (Google Gemini) اختياري، مع تفعيل الفوترة لدى Google",
+    en: "Optional AI-filmed video (Google Gemini), with Google billing enabled",
   },
   homeAdsTitle: {
     fr: "Des concepts publicitaires et leurs visuels",

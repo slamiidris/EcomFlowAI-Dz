@@ -1,6 +1,8 @@
 import { Lock, Sparkles, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { SECTION_ART, type SectionId } from '../lib/sections';
 import { AI_TOOLS, type AiTool } from '../lib/tools';
+import { SectionTile } from './ui/SectionPicture';
 
 const FALLBACK: AiTool = {
   id: 'tool',
@@ -19,9 +21,14 @@ export default function LockedTool({ tab, onSubscribe }: { tab: string; onSubscr
 
   return (
     <div className="mx-auto flex min-h-[55vh] max-w-md flex-col items-center justify-center px-2 text-center">
-      <span className="grid size-14 place-items-center rounded-2xl bg-accent/15 text-accent-ink">
-        <Icon size={26} />
-      </span>
+      {/* the section's picture, as in the menu; the tool's icon for a tool without one */}
+      {tab in SECTION_ART ? (
+        <SectionTile id={tab as SectionId} size="xl" />
+      ) : (
+        <span className="grid size-14 place-items-center rounded-2xl bg-accent/15 text-accent-ink">
+          <Icon size={26} />
+        </span>
+      )}
       <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent-ink">
         <Lock size={12} /> {t('lockedBadgeText', 'Réservé aux abonnés')}
       </span>

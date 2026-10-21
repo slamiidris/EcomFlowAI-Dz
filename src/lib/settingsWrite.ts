@@ -9,6 +9,8 @@
  *  - over-long values are refused instead of being stored.
  */
 
+import { isCloudflareAccountId, isImageProvider } from "./imageProviders";
+
 export const DEFAULT_WORKSPACE_NAME = "E-com DZ Workspace";
 
 /** Fields that hold secrets: encrypted at rest and never returned in full. */
@@ -19,6 +21,9 @@ export const SECRET_FIELDS = [
   "snapAdsToken",
   "geminiApiKey",
   "customApiToken",
+  "openaiApiKey",
+  "falApiKey",
+  "cloudflareApiToken",
 ] as const;
 
 /** Non-secret identifier fields. */
@@ -28,6 +33,7 @@ export const IDENTIFIER_FIELDS = [
   "googleAdsCustomerId",
   "snapAccountId",
   "workspaceName",
+  "cloudflareAccountId",
 ] as const;
 
 const MAX_SECRET_LENGTH = 2048;
@@ -64,9 +70,19 @@ export function buildSettingsWrite({ userId, body, existing, encrypt }: BuildArg
     if (body[field] === undefined) continue;
     const text = body[field] == null ? "" : String(body[field]).trim();
     if (text.length > MAX_IDENTIFIER_LENGTH) throw new SettingsValidationError("Valeur trop longue.");
+    // it goes into the address of Cloudflare's API: its own format only
+    if (field === "cloudflareAccountId" && text && !isCloudflareAccountId(text)) {
+      throw new SettingsValidationError("Identifiant de compte Cloudflare invalide (32 caractères 0-9 et a-f).");
+    }
     const stored = field === "workspaceName" ? text || DEFAULT_WORKSPACE_NAME : text || null;
     createData[field] = stored;
     updateData[field] = stored;
+  }
+
+  if (body.imageProvider !== undefined) {
+    if (!isImageProvider(body.imageProvider)) throw new SettingsValidationError("Service d'images inconnu.");
+    createData.imageProvider = body.imageProvider;
+    updateData.imageProvider = body.imageProvider;
   }
 
   if (createData.workspaceName === undefined) createData.workspaceName = DEFAULT_WORKSPACE_NAME;

@@ -71,7 +71,7 @@ export default function ContactUs() {
   return (
     <div className="max-w-4xl space-y-8">
       <PageHeader
-        icon={MessageCircle}
+        section="contact"
         title={t('menuContact', 'Contact & support')}
         subtitle={t('ctcNousSommesTAider', "Nous sommes là pour t'aider. Écris-nous ou contacte-nous directement.")}
       />

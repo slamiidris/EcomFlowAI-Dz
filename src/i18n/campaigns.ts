@@ -833,6 +833,46 @@ export const campaignsTranslations: TranslationDictionary = {
     ar: "المزايا (واحدة في كل سطر)",
     en: "Benefits (one per line)",
   },
+  cmpGuaranteeTitle: {
+    fr: "Garantie : titre",
+    ar: "الضمان: العنوان",
+    en: "Guarantee: title",
+  },
+  cmpGuaranteeText: {
+    fr: "Garantie : ce qu'elle couvre",
+    ar: "الضمان: ما يشمله",
+    en: "Guarantee: what it covers",
+  },
+  cmpGuaranteeNote: {
+    fr: "Affichée seulement si, dans la page prête, tu coches une garantie ou la vérification avant paiement.",
+    ar: "يظهر فقط إذا اخترت، في الصفحة الجاهزة، الضمان أو المعاينة قبل الدفع.",
+    en: "Shown only if, in the ready page, you tick a guarantee or a check before paying.",
+  },
+  cmpCompare: {
+    fr: "Tableau comparatif",
+    ar: "جدول المقارنة",
+    en: "Comparison table",
+  },
+  cmpCompareFeature: {
+    fr: "Critère",
+    ar: "الميزة",
+    en: "Feature",
+  },
+  cmpCompareOurs: {
+    fr: "Ton produit",
+    ar: "منتجك",
+    en: "Your product",
+  },
+  cmpCompareOthers: {
+    fr: "Les autres",
+    ar: "الآخرون",
+    en: "Others",
+  },
+  cmpCompareRemove: {
+    fr: "Retirer cette ligne",
+    ar: "حذف هذا السطر",
+    en: "Remove this row",
+  },
   cmpSaveVersion: {
     fr: "Enregistrer une nouvelle version",
     ar: "حفظ نسخة جديدة",

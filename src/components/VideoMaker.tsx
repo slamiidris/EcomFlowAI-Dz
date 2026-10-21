@@ -22,28 +22,37 @@ interface Props {
   photos: string[];
   price?: string;
   productName?: string;
+  /** the brand's colour (brand kit), for the highlighted words and the price */
+  accent?: string;
 }
 
 /** Turns a generated script into a real video file, entirely in the browser (no AI video model needed). */
-export default function VideoMaker({ script, format, photos: initialPhotos, price, productName = '' }: Props) {
+export default function VideoMaker({ script, format, photos: initialPhotos, price, productName = '', accent }: Props) {
   const { t } = useLanguage();
   const toast = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>(initialPhotos.slice(0, MAX_PHOTOS));
   const [subtitles, setSubtitles] = useState(true);
+  const [music, setMusic] = useState(true);
   const [assets, setAssets] = useState<RenderAssets | null>(null);
   const [scrub, setScrub] = useState(0.5);
   const [recording, setRecording] = useState(false);
   const [percent, setPercent] = useState(0);
   const [video, setVideo] = useState<{ url: string; ext: string } | null>(null);
-  // AI clip address per scene (from the Veo panel) and the loaded video elements drawn in their place
+  // AI clip address per scene (from the AI video panel) and the loaded video elements drawn in their place
   const [clips, setClips] = useState<(string | null)[]>(() => (script.scenes ?? []).map(() => null));
   const [clipEls, setClipEls] = useState<(HTMLVideoElement | null)[]>([]);
   const supported = useMemo(() => canRecordVideo(), []);
   const videoFormat = toFormat(format);
   const size = CANVAS_SIZE[videoFormat];
-  const timeline = useMemo(() => buildTimeline(script, { imageCount: assets?.images.length ?? 0, subtitles, price }), [script, assets, subtitles, price]);
+  // a scene filmed by the AI lasts as long as its clip
+  const sceneSeconds = useMemo(() => clipEls.map((el) => (el && Number.isFinite(el.duration) ? el.duration : null)), [clipEls]);
+  const timeline = useMemo(
+    () => buildTimeline(script, { imageCount: assets?.images.length ?? 0, subtitles, price, sceneSeconds }),
+    [script, assets, subtitles, price, sceneSeconds],
+  );
+  const hasClips = clipEls.some(Boolean);
 
   // photos and fonts are loaded once per change; a photo that fails to load is skipped
   useEffect(() => {
@@ -51,10 +60,10 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
     (async () => {
       await loadVideoFonts();
       const loaded = await Promise.all(photos.map((src) => loadImage(src).catch(() => null)));
-      if (!cancelled) setAssets(prepareAssets(loaded.filter((img): img is HTMLImageElement => img !== null), size.width, size.height));
+      if (!cancelled) setAssets(prepareAssets(loaded.filter((img): img is HTMLImageElement => img !== null), size.width, size.height, accent));
     })();
     return () => { cancelled = true; };
-  }, [photos, size.width, size.height]);
+  }, [photos, size.width, size.height, accent]);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +101,7 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
       const blob = await recordVideo(canvas, timeline, renderAssets, (fraction) => {
         const next = Math.round(fraction * 100);
         setPercent((prev) => (prev === next ? prev : next));
-      });
+      }, { music });
       setVideo({ url: URL.createObjectURL(blob), ext: blob.type.includes('mp4') ? 'mp4' : 'webm' });
     } catch (err) {
       console.error('Video creation failed:', err);
@@ -157,6 +166,12 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
             <input type="checkbox" checked={subtitles} disabled={recording} onChange={(e) => setSubtitles(e.target.checked)} className="size-4 accent-[var(--color-primary,#2563eb)]" />
             {t('vmSubtitles', 'Afficher la voix off en sous-titres')}
           </label>
+          {!hasClips && (
+            <label className="flex items-center gap-2 text-sm text-fg-muted cursor-pointer">
+              <input type="checkbox" checked={music} disabled={recording} onChange={(e) => setMusic(e.target.checked)} className="size-4 accent-[var(--color-primary,#2563eb)]" />
+              {t('vmMusic', 'Ajouter une musique de fond')}
+            </label>
+          )}
 
           {recording ? (
             <div className="space-y-2" role="status">
@@ -186,7 +201,11 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
             </button>
           )}
 
-          <p className="text-xs text-fg-faint">{t('vmSilentNote', 'La vidéo est muette : ajoute ta musique ou ta voix off dans TikTok, CapCut ou Instagram avant de publier.')}</p>
+          <p className="text-xs text-fg-faint">
+            {hasClips || music
+              ? t('vmMusicNote', "La musique est créée pour ta vidéo, sans droits à payer. Les scènes filmées par l'IA gardent leur propre son.")
+              : t('vmSilentNote', 'La vidéo est muette : ajoute ta musique ou ta voix off dans TikTok, CapCut ou Instagram avant de publier.')}
+          </p>
         </div>
       </div>
     </section>

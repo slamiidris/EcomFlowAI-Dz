@@ -3,10 +3,12 @@
 
 import { translate } from '../i18n/runtime';
 import { unwrapSingleObject } from '../lib/aiJson';
+import { finalImage } from '../lib/generatedImage';
 
 export const MODEL_NAME = "gemini-3-flash-preview";
-// Image generation model — separate model family (Gemini image), intentionally different.
-export const IMAGE_MODEL_NAME = "gemini-2.5-flash-image";
+// Image generation model — separate model family (Gemini image, "Nano Banana"), intentionally different.
+// The server falls back to older image models for keys that cannot use it (src/lib/aiFallback.ts).
+export const IMAGE_MODEL_NAME = "gemini-nano-banana-2.1";
 
 /**
  * Repairs a truncated JSON string by parsing it and balancing open structures.
@@ -854,24 +856,25 @@ export async function generateProductPageOptimizations(analysisContext: string) 
 /**
  * An AI image for one landing-page section, made from the product photo so the product stays the same.
  * Needs a Gemini key with billing; any failure is thrown (no stand-in picture), so the page never shows a fake image.
+ * `aspectRatio` fixes the shape (the posters of the long-image page are all 4:5, so they stack evenly).
  */
-export async function generateSectionImage(prompt: string, productPhoto?: string | null): Promise<string> {
+export async function generateSectionImage(prompt: string, productPhoto?: string | null, aspectRatio?: string): Promise<string> {
   const reference = productPhoto?.startsWith('data:image/')
     ? { data: productPhoto.split(',')[1], mimeType: productPhoto.slice(5, productPhoto.indexOf(';')) }
     : null;
   const response = await getAI().models.generateContent({
     model: IMAGE_MODEL_NAME,
     contents: reference ? [{ inlineData: reference }, { text: prompt }] : prompt,
+    ...(aspectRatio ? { config: { imageConfig: { aspectRatio } } } : {}),
   });
-  for (const candidate of response.candidates || []) {
-    for (const part of candidate.content?.parts || []) {
-      if (part.inlineData?.data) return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-    }
-  }
+  const image = finalImage(response.candidates);
+  if (image) return image;
   throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
 }
 
 // A failure reaches the caller as it is: no stand-in stock photo, which shown as "generated" would mislead the seller.
+// No output cap: the current image models think before they draw, and a low cap could stop them before the image.
+// The shape is also set in imageConfig, which Google follows exactly (from the prompt alone it often made a square).
 export async function generateProductImage(productName: string, style: string = "lifestyle, clean lighting, professional photography", aspectRatio: string = "1:1") {
   return callGeminiWithRetry(async (ai) => {
     const response = await ai.models.generateContent({
@@ -880,16 +883,10 @@ export async function generateProductImage(productName: string, style: string = 
         Style: ${style}. 
         Mandatory Aspect Ratio: --ar ${aspectRatio}. 
         The composition must be optimized for a ${aspectRatio} format.`,
-      config: { maxOutputTokens: 2048 }
+      config: { imageConfig: { aspectRatio } },
     });
-      
-    for (const candidate of response.candidates || []) {
-      for (const part of candidate.content.parts) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
+    const image = finalImage(response.candidates);
+    if (image) return image;
     throw new Error(translate('shNoImageGenerated', 'Aucune image générée.'));
   });
 }

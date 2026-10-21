@@ -102,6 +102,7 @@ describe('the dictionary', () => {
     'APIs', 'Contacts', 'Plan', 'Plan:', 'Actions', 'Note:', 'Workspace:', 'Email:', 'Telegram (username)', 'Code (unique, slug)',
     'Emoji', 'Type', 'Description', 'Badge', 'Active', 'API — {name}',
     'PROMPT', 'DARIJA', 'BRIEFING', 'Performance', 'Benchmarks', 'Menu',
+    'Impact', 'Section {n}', 'Premium',
   ]);
   const SAME_IN_ARABIC = new Set(['lpMockUrl']);
 

@@ -1,15 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, ExternalLink, Globe, Loader2, Monitor, Smartphone, Sparkles } from 'lucide-react';
+import { Download, ExternalLink, Globe, Info, Monitor, Smartphone } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/funnels';
 import { escapeHtml } from '../lib/html';
-import { buildLandingHtml, type LpSection } from '../lib/landingHtml';
-import { sectionImagePrompt, type ImageSection } from '../lib/landingImages';
+import { TEXT } from '../lib/landingCopy';
+import { buildLandingHtml, pageLanguage, posterText, sectionRoles, type LpSection, type SellerReview } from '../lib/landingHtml';
+import { posterAspect, posterImagePrompt, sectionImagePrompt, type ImageSection } from '../lib/landingImages';
+import { DEFAULT_SETTINGS, readSettings, type PublisherSettings } from '../lib/landingSettings';
+import { POSTER_PALETTE, landingColors } from '../lib/landingTheme';
 import { fileToUploadDataUrl } from '../lib/imageCompress';
+import { stackImages } from '../lib/longImage';
 import { generateSectionImage } from '../services/gemini';
+import { chosenImageProvider, imageFromService } from '../services/imageService';
+import { KEEPS_PRODUCT, type AspectRatio } from '../lib/imageProviders';
 import { cn } from '../lib/utils';
+import PageOptions from './landing/PageOptions';
+import PosterColorsPicker from './landing/PosterColorsPicker';
+import ReviewsEditor from './landing/ReviewsEditor';
+import SectionImages from './landing/SectionImages';
+import TemplatePicker from './landing/TemplatePicker';
+import { FIELD } from './landing/styles';
 
 const WHATSAPP_KEY = 'dzads_lp_whatsapp';
+const SETTINGS_KEY = 'dzads_lp_settings';
+/** narrower photos look blurry across a phone screen (the long-image page shows them from edge to edge) */
+const SHARP_WIDTH = 700;
+
+const naturalWidth = (src: string) =>
+  new Promise<number>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img.naturalWidth);
+    img.onerror = () => resolve(0);
+    img.src = src;
+  });
 const fileSlug = (name: string) =>
   name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'landing-page';
 
@@ -24,44 +47,84 @@ interface Props {
   defaultPrice?: string;
 }
 
-/** The generated structure as a real landing page: live preview and a self-contained HTML file to publish. */
 /** AI images come back as large PNGs; a 1080 px JPEG keeps the page light on phones. */
 async function compressDataUrl(dataUrl: string): Promise<string> {
   const blob = await (await fetch(dataUrl)).blob();
   return fileToUploadDataUrl(new File([blob], 'section.png', { type: blob.type || 'image/png' }), { maxDimension: 1080, quality: 0.82 });
 }
 
+function loadSettings(): PublisherSettings {
+  try {
+    return readSettings(localStorage.getItem(SETTINGS_KEY));
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+/** The generated structure as a real landing page: its look and promises, a live preview and a self-contained HTML file to publish. */
 export default function LandingPublisher({ lpData, productName, photos, language, sectionImages, defaultPrice }: Props) {
   const { t } = useLanguage();
   const [aiImages, setAiImages] = useState<(string | null)[]>(() => (lpData.sections ?? []).map((_, i) => sectionImages?.[i] ?? null));
+  // posters of the long-image template, kept apart: their words are drawn in, so other templates cannot use them
+  const [posterImages, setPosterImages] = useState<(string | null)[]>(() => (lpData.sections ?? []).map(() => null));
+  const [longImageBusy, setLongImageBusy] = useState(false);
   const [aiRunning, setAiRunning] = useState<number | null>(null);
   const [aiError, setAiError] = useState('');
   const [price, setPrice] = useState(defaultPrice ?? '');
   const [oldPrice, setOldPrice] = useState('');
   const [whatsapp, setWhatsapp] = useState(() => { try { return localStorage.getItem(WHATSAPP_KEY) ?? ''; } catch { return ''; } });
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [settings, setSettings] = useState<PublisherSettings>(loadSettings);
+  const [reviews, setReviews] = useState<SellerReview[]>([]);
+  const [reviewShots, setReviewShots] = useState<string[]>([]);
   const [device, setDevice] = useState<'mobile' | 'desktop'>('mobile');
 
+  // the narrowest product photo, to warn when the photos are too small to look sharp
+  const [narrowest, setNarrowest] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void Promise.all(photos.map(naturalWidth)).then((widths) => {
+      const known = widths.filter((w) => w > 0);
+      if (alive) setNarrowest(known.length ? Math.min(...known) : null);
+    });
+    return () => { alive = false; };
+  }, [photos]);
+
   useEffect(() => { try { localStorage.setItem(WHATSAPP_KEY, whatsapp); } catch { /* storage unavailable */ } }, [whatsapp]);
+  useEffect(() => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* storage unavailable */ } }, [settings]);
 
   const name = lpData.productName || productName;
+  const isPoster = settings.template === 'poster';
+  // the long-image page is deep blue and yellow unless the seller picks the product's palette
+  const palette = isPoster && settings.posterColors === 'blue' ? POSTER_PALETTE : lpData.colorPalette;
   const html = useMemo(
-    () => buildLandingHtml({ productName: name, language, sections: lpData.sections ?? [], colorPalette: lpData.colorPalette, photos, sectionImages: aiImages, price, oldPrice, whatsapp, webhookUrl }),
-    [name, language, lpData.sections, lpData.colorPalette, photos, aiImages, price, oldPrice, whatsapp, webhookUrl],
+    () => buildLandingHtml({
+      productName: name, language, sections: lpData.sections ?? [], colorPalette: palette, photos, sectionImages: aiImages,
+      posterImages, price, oldPrice, whatsapp, webhookUrl,
+      template: settings.template, storeName: settings.storeName, delivery: { mode: settings.deliveryMode, fee: settings.deliveryFee },
+      promises: settings.promises, reviews, reviewShots,
+    }),
+    [name, language, lpData.sections, palette, photos, aiImages, posterImages, price, oldPrice, whatsapp, webhookUrl, settings, reviews, reviewShots],
   );
+  // the preview reloads the whole page (images included): it follows the typing once the typing pauses
+  const [previewHtml, setPreviewHtml] = useState(html);
+  useEffect(() => {
+    const id = setTimeout(() => setPreviewHtml(html), 350);
+    return () => clearTimeout(id);
+  }, [html]);
   const hasDestination = whatsapp.replace(/\D/g, '').length >= 9 || /^https:\/\//.test(webhookUrl.trim());
 
-  const blobUrl = () => URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  const download = () => {
-    const url = blobUrl();
+  const saveFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${fileSlug(name)}.html`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
+  const download = () => saveFile(new Blob([html], { type: 'text/html;charset=utf-8' }), `${fileSlug(name)}.html`);
   // The full-page preview runs in a sandboxed frame, like the preview above: a page opened from a blob would
   // otherwise run on this site's origin, with the seller's session.
   const openTab = () => {
@@ -71,15 +134,39 @@ export default function LandingPublisher({ lpData, productName, photos, language
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
-  const makeImages = async () => {
+  // images only for the sections the page shows: one left out (invented reviews, a guarantee not offered) costs nothing
+  const shownIndices = sectionRoles(lpData.sections ?? [], settings.promises).flatMap((role, i) => (role === 'shown' ? [i] : []));
+  const images = isPoster ? posterImages : aiImages;
+  const pageLang = pageLanguage(language, (lpData.sections ?? []).flatMap((s) => [s.title ?? '', s.content ?? '']));
+
+  const makeImages = async (indices: number[]) => {
     setAiError('');
     const sections = lpData.sections ?? [];
-    for (let i = 0; i < sections.length; i++) {
-      if (aiImages[i]) continue;
+    // the kind is fixed when the run starts: switching templates meanwhile does not mix posters and pictures
+    const poster = isPoster;
+    const setImages = poster ? setPosterImages : setAiImages;
+    // the posters are drawn in the page's canvas colours, so they melt into it
+    const colors = landingColors(palette, 'poster');
+    // Gemini unless the seller chose another service; one that cannot keep the product is never used for the page.
+    // The first section shows as running while the choice is read, so the click answers at once.
+    if (indices.length) setAiRunning(indices[0]);
+    const service = await chosenImageProvider();
+    if (!KEEPS_PRODUCT[service]) {
+      setAiRunning(null);
+      setAiError(t('lppServiceNoPhoto', 'Le service d’images choisi dans Paramètres (Cloudflare) ne garde pas ton produit : choisis Gemini, OpenAI ou FLUX pour les images de ta page.'));
+      return;
+    }
+    const draw = (prompt: string, aspectRatio?: AspectRatio) =>
+      service === 'gemini' ? generateSectionImage(prompt, photos[0], aspectRatio) : imageFromService({ prompt, reference: photos[0], aspectRatio: aspectRatio ?? '1:1' });
+    for (const i of indices) {
       setAiRunning(i);
       try {
-        const image = await compressDataUrl(await generateSectionImage(sectionImagePrompt(sections[i]), photos[0]));
-        setAiImages((prev) => prev.map((v, j) => (j === i ? image : v)));
+        const section = sections[i];
+        const raw = poster
+          ? await draw(posterImagePrompt(section, posterText(section, TEXT[pageLang]), { language: pageLang, hero: i === 0, colors: [colors.canvas, colors.highlight] }), posterAspect(i === 0))
+          : await draw(sectionImagePrompt(section));
+        const image = await compressDataUrl(raw);
+        setImages((prev) => prev.map((v, j) => (j === i ? image : v)));
       } catch (err) {
         const e = err as { message?: string; status?: number };
         setAiError(e?.message || t('shAiError', 'Erreur IA. Réessaie.'));
@@ -89,10 +176,35 @@ export default function LandingPublisher({ lpData, productName, photos, language
     }
     setAiRunning(null);
   };
-  const sectionCount = lpData.sections?.length ?? 0;
-  const imagesReady = aiImages.filter(Boolean).length;
+  const removeImage = (index: number) => (isPoster ? setPosterImages : setAiImages)((prev) => prev.map((v, j) => (j === index ? null : v)));
 
-  const field = 'w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary/30';
+  const postersDone = isPoster && shownIndices.length > 0 && shownIndices.every((i) => posterImages[i]);
+  const downloadLongImage = async () => {
+    setLongImageBusy(true);
+    setAiError('');
+    try {
+      saveFile(await stackImages(shownIndices.map((i) => posterImages[i] as string)), `${fileSlug(name)}-image-longue.jpg`);
+    } catch {
+      setAiError(t('lppLongImageError', "L'image longue n'a pas pu être créée. Réessaie."));
+    } finally {
+      setLongImageBusy(false);
+    }
+  };
+
+  const sectionImagesBlock = (
+    <SectionImages
+      isPoster={isPoster}
+      shownIndices={shownIndices}
+      images={images}
+      running={aiRunning}
+      error={aiError}
+      hasPhoto={photos.length > 0}
+      onGenerate={(indices) => void makeImages(indices)}
+      onRemove={removeImage}
+      onLongImage={postersDone ? () => void downloadLongImage() : null}
+      longImageBusy={longImageBusy}
+    />
+  );
 
   return (
     <section className="space-y-6" aria-labelledby="lp-publisher-title">
@@ -105,42 +217,51 @@ export default function LandingPublisher({ lpData, productName, photos, language
         {photos.length === 0 && <p className="mt-2 text-xs text-warning-ink">{t('lppNoPhoto', "Ajoute des photos du produit dans le formulaire pour qu'elles apparaissent sur la page.")}</p>}
       </div>
 
+      <TemplatePicker
+        value={settings.template}
+        onChange={(template) => setSettings((s) => ({ ...s, template }))}
+        palette={lpData.colorPalette}
+        posterPalette={settings.posterColors === 'blue' ? POSTER_PALETTE : undefined}
+      />
+      {isPoster && <PosterColorsPicker value={settings.posterColors} onChange={(posterColors) => setSettings((s) => ({ ...s, posterColors }))} palette={lpData.colorPalette} />}
+      {isPoster && sectionImagesBlock}
+      {narrowest !== null && narrowest < SHARP_WIDTH && (
+        <p className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning/10 p-3.5 text-xs text-fg" role="note">
+          <Info size={16} className="mt-px shrink-0 text-warning-ink" aria-hidden="true" />
+          {t('lppSmallPhotos', "Certaines de tes photos sont petites ({width} px de large) : en grand sur la page, elles seront floues. Ajoute des photos d'au moins 800 px de large, ou crée les affiches IA.", { width: narrowest })}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-fg-muted">
           {t('lppPrice', 'Prix affiché')}
-          <input className={cn(field, 'mt-1.5')} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="2 900 DA" dir="ltr" />
+          <input className={cn(FIELD, 'mt-1.5')} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="2 900 DA" dir="ltr" />
         </label>
         <label className="block text-xs font-semibold text-fg-muted">
           {t('lppOldPrice', 'Ancien prix (barré, optionnel)')}
-          <input className={cn(field, 'mt-1.5')} value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="4 500 DA" dir="ltr" />
+          <input className={cn(FIELD, 'mt-1.5')} value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="4 500 DA" dir="ltr" />
         </label>
         <label className="block text-xs font-semibold text-fg-muted">
           {t('lppWhatsapp', 'Ton numéro WhatsApp pour recevoir les commandes')}
-          <input className={cn(field, 'mt-1.5')} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} inputMode="tel" placeholder="213555000000" dir="ltr" />
+          <input className={cn(FIELD, 'mt-1.5')} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} inputMode="tel" placeholder="213555000000" dir="ltr" />
           <span className="mt-1 block font-normal text-fg-faint">{t('lppWhatsappHint', 'Format international sans « + », ex : 213555000000')}</span>
         </label>
         <label className="block text-xs font-semibold text-fg-muted">
           {t('lppWebhook', 'Adresse qui reçoit aussi les commandes (optionnel, ex. Google Sheets)')}
-          <input className={cn(field, 'mt-1.5')} value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://script.google.com/…" dir="ltr" />
+          <input className={cn(FIELD, 'mt-1.5')} value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://script.google.com/…" dir="ltr" />
         </label>
       </div>
 
-      <div className="rounded-2xl border border-line bg-surface-2 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Sparkles size={16} className="text-accent-ink" />
-          <p className="text-sm font-semibold text-fg">{t('lppAiTitle', 'Images IA des sections')}</p>
-          {aiRunning !== null ? (
-            <span className="ms-auto flex items-center gap-2 text-xs font-semibold text-fg-muted" role="status"><Loader2 size={14} className="animate-spin" /> {t('lppAiRunning', 'Image de la section {n} en cours…', { n: aiRunning + 1 })}</span>
-          ) : imagesReady < sectionCount && (
-            <button type="button" onClick={makeImages} disabled={photos.length === 0} className="btn-dz-secondary ms-auto !py-1.5 !text-xs disabled:opacity-50">
-              <Sparkles size={13} /> {t('lppAiGenerate', 'Générer les images IA ({count} sections)', { count: sectionCount - imagesReady })}
-            </button>
-          )}
-        </div>
-        <p className="mt-1 text-xs text-fg-muted">{photos.length === 0 ? t('lppAiNeedPhoto', "Ajoute d'abord une photo du produit dans le formulaire : l'IA en a besoin pour garder ton vrai produit.") : t('lppAiIntro', "L'IA crée une image pour chaque section à partir de ta photo produit. Il faut une clé Gemini avec facturation.")}</p>
-        {imagesReady > 0 && <p className="mt-1 text-xs text-success-ink">{t('lppAiDone', '{done}/{total} images prêtes, déjà placées dans la page.', { done: imagesReady, total: sectionCount })}</p>}
-        {aiError && <p className="mt-2 text-xs text-warning-ink" role="alert">{aiError}</p>}
-      </div>
+      <PageOptions settings={settings} onChange={setSettings} />
+
+      <ReviewsEditor reviews={reviews} onReviews={setReviews} shots={reviewShots} onShots={setReviewShots} />
+
+      {!isPoster && sectionImagesBlock}
+
+      <p className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning/10 p-3.5 text-xs text-fg">
+        <Info size={16} className="mt-px shrink-0 text-warning-ink" aria-hidden="true" />
+        {t('lppCheckCopy', "Relis les textes avant de publier : l'IA peut inventer des détails (délais de livraison, stock, chiffres, caractéristiques). Corrige ce qui n'est pas vrai pour ton produit.")}
+      </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={download} disabled={!hasDestination} className="btn-dz-primary disabled:opacity-50">
@@ -163,9 +284,9 @@ export default function LandingPublisher({ lpData, productName, photos, language
       <div className="flex justify-center rounded-2xl border border-line bg-surface-2 p-3">
         <iframe
           title={t('lppPreviewTitle', 'Aperçu de la landing page')}
-          srcDoc={html}
+          srcDoc={previewHtml}
           sandbox="allow-scripts allow-forms allow-popups"
-          className={cn('h-[720px] rounded-xl border border-line bg-white transition-all', device === 'mobile' ? 'w-[390px] max-w-full' : 'w-full')}
+          className={cn('h-[720px] rounded-xl border border-line bg-white', device === 'mobile' ? 'w-[390px] max-w-full' : 'w-full')}
         />
       </div>
       <p className="text-xs text-fg-faint">{t('lppPublishHelp', 'Pour la mettre en ligne : envoie ce fichier sur ton hébergeur (Hostinger, Netlify Drop, GitHub Pages…) ou colle son contenu dans ton site.')}</p>

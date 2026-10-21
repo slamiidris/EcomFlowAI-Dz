@@ -248,6 +248,11 @@ export const coreTranslations: TranslationDictionary = {
     ar: "أنشئ مسارات البيع ونصوص صفحة الهبوط.",
     en: "Build sales funnels and landing page copy.",
   },
+  toolImagesBlurb: {
+    fr: "Ton vrai produit mis en scène : lifestyle, fond épuré, premium ou créatif.",
+    ar: "منتجك الحقيقي في مشهد جديد: واقعي، بسيط، فاخر أو إبداعي.",
+    en: "Your real product staged: lifestyle, clean, premium or creative.",
+  },
   toolAssemblerBlurb: {
     fr: "Assemble visuellement ta landing page, section par section.",
     ar: "اجمع صفحة الهبوط قسماً بقسم بشكل مرئي.",
@@ -986,10 +991,10 @@ export const coreTranslations: TranslationDictionary = {
     ar: "نشاطك",
     en: "Your activity",
   },
-  dashStudios: {
-    fr: "Studios et outils",
-    ar: "الاستوديوهات والأدوات",
-    en: "Studios and tools",
+  dashQuickAccess: {
+    fr: "Accès rapide",
+    ar: "وصول سريع",
+    en: "Quick access",
   },
 };
 

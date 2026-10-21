@@ -105,7 +105,7 @@ export default function NewProject() {
       <button type="button" onClick={() => navigate(TAB_PATHS.projects)} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted hover:text-fg">
         <ArrowLeft size={15} className="rtl:rotate-180" /> {t('menuProjects', 'Campagnes')}
       </button>
-      <PageHeader icon={Plus} title={t('navNewCampaign', 'Nouvelle campagne')} subtitle={t('cmpNewSubtitle', 'Commence par les photos du produit : l’IA peut remplir le reste à ta place.')} />
+      <PageHeader section="newCampaign" title={t('navNewCampaign', 'Nouvelle campagne')} subtitle={t('cmpNewSubtitle', 'Commence par les photos du produit : l’IA peut remplir le reste à ta place.')} />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section aria-labelledby="new-photos" className="ui-card space-y-4 p-5">

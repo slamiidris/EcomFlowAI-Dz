@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CANVAS_SIZE, buildTimeline, frameAt, isRtlText, parseSceneSeconds, pickRecorderMime, wrapText } from '../../src/lib/videoTimeline';
+import { CANVAS_SIZE, buildTimeline, frameAt, isRtlText, parseSceneSeconds, pickRecorderMime, subtitlePages, wrapText } from '../../src/lib/videoTimeline';
 
 const NBSP = ' ';
 const script = {
@@ -156,9 +156,43 @@ describe('wrapText', () => {
   });
 });
 
+describe('subtitlePages', () => {
+  it('shows a short line as a single page for the whole scene', () => {
+    expect(subtitlePages(['Livraison partout'])).toEqual([{ lines: ['Livraison partout'], from: 0, to: 1 }]);
+  });
+
+  it('pages through a long line two lines at a time instead of cutting it', () => {
+    const pages = subtitlePages(['un deux trois', 'quatre cinq six', 'sept huit neuf', 'dix']);
+    expect(pages.map((p) => p.lines)).toEqual([['un deux trois', 'quatre cinq six'], ['sept huit neuf', 'dix']]);
+  });
+
+  it('gives each page a share of the time that follows its number of words, ending at 1', () => {
+    const pages = subtitlePages(['a b c', 'd e f', 'g h']);
+    expect(pages[0]).toMatchObject({ from: 0, to: 0.75 });
+    expect(pages[1]).toMatchObject({ from: 0.75, to: 1 });
+  });
+
+  it('returns no page for no text', () => {
+    expect(subtitlePages([])).toEqual([]);
+  });
+});
+
+describe('scene lengths from AI clips', () => {
+  it('gives a scene the length of its clip, within limits, and keeps the script length elsewhere', () => {
+    const timeline = buildTimeline(script, { imageCount: 1, sceneSeconds: [8.2, null, 30] });
+    const scenes = timeline.segments.filter((s) => s.kind === 'scene');
+    expect(scenes.map((s) => +(s.end - s.start).toFixed(2))).toEqual([8.2, 5, 10]);
+  });
+});
+
 describe('pickRecorderMime', () => {
   it('prefers MP4 when the browser can record it', () => {
     expect(pickRecorderMime((t) => t.startsWith('video/mp4'))).toMatch(/^video\/mp4/);
+  });
+
+  it('asks for a format with an audio codec when the video has sound', () => {
+    expect(pickRecorderMime(() => true, true)).toBe('video/mp4;codecs=avc1.42E01E,mp4a.40.2');
+    expect(pickRecorderMime((t) => t.startsWith('video/webm'), true)).toBe('video/webm;codecs=vp9,opus');
   });
 
   it('falls back to WebM', () => {

@@ -68,7 +68,7 @@ export default function ProjectList() {
   return (
     <div className="space-y-8">
       <PageHeader
-        icon={FolderKanban}
+        section="projects"
         title={t('menuProjects', 'Campagnes')}
         subtitle={t('cmpListSubtitle', 'Une campagne réunit un produit, ses photos et tout ce que l’IA crée pour le vendre : landing page, vidéo et publicités.')}
         actions={

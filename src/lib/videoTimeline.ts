@@ -71,16 +71,23 @@ export function parseSceneSeconds(time: string | undefined): number | null {
 // spaced numbers are joined so Arabic captions never show "900 2"
 const clean = (text: string | undefined) => keepNumbersTogether((text ?? '').trim());
 
+/** A scene filmed by AI lasts as long as its clip, between these bounds. */
+const MIN_CLIP_SCENE = 2;
+const MAX_CLIP_SCENE = 10;
+
 export function buildTimeline(
   script: VideoScript,
-  options: { imageCount: number; subtitles?: boolean; price?: string },
+  options: { imageCount: number; subtitles?: boolean; price?: string; sceneSeconds?: (number | null)[] },
 ): Timeline {
   const { imageCount, subtitles = true } = options;
   const segments: Segment[] = [];
   let cursor = 0;
 
   (script.scenes ?? []).forEach((scene, i) => {
-    const seconds = Math.min(MAX_SCENE, Math.max(MIN_SCENE, parseSceneSeconds(scene.time) ?? DEFAULT_SCENE));
+    const clipSeconds = options.sceneSeconds?.[i];
+    const seconds = typeof clipSeconds === 'number' && Number.isFinite(clipSeconds)
+      ? Math.min(MAX_CLIP_SCENE, Math.max(MIN_CLIP_SCENE, clipSeconds))
+      : Math.min(MAX_SCENE, Math.max(MIN_SCENE, parseSceneSeconds(scene.time) ?? DEFAULT_SCENE));
     segments.push({
       kind: 'scene',
       sceneIndex: i,
@@ -153,9 +160,35 @@ export function wrapText(text: string, maxWidth: number, measure: (s: string) =>
   return lines;
 }
 
-const RECORDER_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+export interface SubtitlePage {
+  lines: string[];
+  /** when the page shows and hides, as fractions of the subtitle's time (0..1) */
+  from: number;
+  to: number;
+}
 
-/** The best video format this browser can record (MP4 plays everywhere, WebM is the fallback). */
-export function pickRecorderMime(isSupported: (type: string) => boolean): string | null {
-  return RECORDER_TYPES.find((type) => isSupported(type)) ?? null;
+/**
+ * Groups wrapped lines into pages of `perPage` lines, each shown for a share of the time that follows its number of
+ * words: a long voice-over line pages through, whole, instead of being cut.
+ */
+export function subtitlePages(lines: string[], perPage = 2): SubtitlePage[] {
+  const groups: string[][] = [];
+  for (let i = 0; i < lines.length; i += perPage) groups.push(lines.slice(i, i + perPage));
+  const words = groups.map((group) => group.join(' ').split(/\s+/).filter(Boolean).length);
+  const total = words.reduce((sum, n) => sum + n, 0) || 1;
+  let from = 0;
+  return groups.map((group, i) => {
+    const to = i === groups.length - 1 ? 1 : from + words[i] / total;
+    const page = { lines: group, from, to };
+    from = to;
+    return page;
+  });
+}
+
+const RECORDER_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+const RECORDER_TYPES_WITH_SOUND = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+
+/** The best video format this browser can record (MP4 plays everywhere, WebM is the fallback), with sound or not. */
+export function pickRecorderMime(isSupported: (type: string) => boolean, withSound = false): string | null {
+  return (withSound ? RECORDER_TYPES_WITH_SOUND : RECORDER_TYPES).find((type) => isSupported(type)) ?? null;
 }

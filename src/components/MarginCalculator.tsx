@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, Coins, TrendingUp, AlertCircle } from 'lucide-react';
+import { Calculator, TrendingUp, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import RichText from './RichText';
@@ -46,7 +46,7 @@ export default function MarginCalculator() {
   return (
     <div className="space-y-6">
       <PageHeader
-        icon={Coins}
+        section="calculator"
         title={t('menuCalculator', 'Calcul de marge COD')}
         subtitle={t('calcOptimisezProfitsMarcheAlgerien', 'Optimisez vos profits sur le marché algérien')}
       />

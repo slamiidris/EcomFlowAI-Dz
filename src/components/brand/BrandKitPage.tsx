@@ -85,7 +85,7 @@ export default function BrandKitPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        icon={Palette}
+        section="brand"
         title={t('menuBrand', 'Identité de marque')}
         subtitle={t('brkSubtitle', 'Ton logo, tes couleurs et ta façon de parler. Chaque landing page, script et publicité les reprend.')}
         actions={

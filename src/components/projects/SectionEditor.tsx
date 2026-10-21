@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowUp, Loader2, Save, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { directCtaIndex } from '../../lib/landingHtml';
 import type { LandingOutput } from './useGenerators';
 import '../../i18n/campaigns';
 import '../../i18n/funnels';
@@ -28,7 +29,23 @@ export default function SectionEditor({ lpData, onSave, onCancel }: { lpData: Lp
       next.splice(i + by, 0, item);
       return next;
     });
-  const firstCta = (s: Section) => s.cta?.variations?.[0]?.text ?? '';
+  // the button text the page publishes: the plain call to action (see directCtaIndex)
+  const buttonText = (s: Section) => {
+    const variations = s.cta?.variations ?? [];
+    return variations[directCtaIndex(variations)]?.text ?? '';
+  };
+  const setButtonText = (i: number, text: string) =>
+    edit(i, (x) => {
+      const variations = [...(x.cta?.variations ?? [])];
+      const at = directCtaIndex(variations);
+      if (at >= 0) variations[at] = { ...variations[at], text };
+      else variations.push({ type: 'direct', text });
+      return { ...x, cta: { ...x.cta, variations } };
+    });
+  const editRow = (i: number, r: number, patch: Record<string, string>) =>
+    edit(i, (x) => ({ ...x, comparisonTable: (x.comparisonTable as Section[]).map((row, k) => (k === r ? { ...row, ...patch } : row)) }));
+  const removeRow = (i: number, r: number) =>
+    edit(i, (x) => ({ ...x, comparisonTable: (x.comparisonTable as Section[]).filter((_, k) => k !== r) }));
 
   // one click, one version: the button stays disabled until the save has answered
   const save = async () => {
@@ -80,18 +97,7 @@ export default function SectionEditor({ lpData, onSave, onCancel }: { lpData: Lp
               </label>
               <label className="block text-[13px] font-medium text-fg">
                 {t('cmpButtonText', 'Texte du bouton')}
-                <input
-                  dir="auto"
-                  className="input-dz mt-1.5"
-                  value={firstCta(s)}
-                  onChange={(e) =>
-                    edit(i, (x) => {
-                      const variations = [...(x.cta?.variations ?? [{ type: 'direct' }])];
-                      variations[0] = { ...variations[0], text: e.target.value };
-                      return { ...x, cta: { ...x.cta, variations } };
-                    })
-                  }
-                />
+                <input dir="auto" className="input-dz mt-1.5" value={buttonText(s)} onChange={(e) => setButtonText(i, e.target.value)} />
               </label>
               <label className="block text-[13px] font-medium text-fg md:col-span-2">
                 {t('cmpSectionText', 'Texte')}
@@ -108,6 +114,34 @@ export default function SectionEditor({ lpData, onSave, onCancel }: { lpData: Lp
                     onBlur={() => edit(i, (x) => ({ ...x, benefits: (x.benefits as string[]).map((b) => b.trim()).filter(Boolean) }))}
                   />
                 </label>
+              )}
+              {s.guaranteeDetails && (
+                <>
+                  <label className="block text-[13px] font-medium text-fg">
+                    {t('cmpGuaranteeTitle', 'Garantie : titre')}
+                    <input dir="auto" className="input-dz mt-1.5" value={s.guaranteeDetails.title ?? ''} onChange={(e) => edit(i, (x) => ({ ...x, guaranteeDetails: { ...x.guaranteeDetails, title: e.target.value } }))} />
+                  </label>
+                  <label className="block text-[13px] font-medium text-fg">
+                    {t('cmpGuaranteeText', "Garantie : ce qu'elle couvre")}
+                    <input dir="auto" className="input-dz mt-1.5" value={s.guaranteeDetails.description ?? ''} onChange={(e) => edit(i, (x) => ({ ...x, guaranteeDetails: { ...x.guaranteeDetails, description: e.target.value } }))} />
+                  </label>
+                  <p className="text-xs text-fg-muted md:col-span-2">{t('cmpGuaranteeNote', 'Affichée seulement si, dans la page prête, tu coches une garantie ou la vérification avant paiement.')}</p>
+                </>
+              )}
+              {Array.isArray(s.comparisonTable) && s.comparisonTable.length > 0 && (
+                <div className="md:col-span-2">
+                  <p className="text-[13px] font-medium text-fg">{t('cmpCompare', 'Tableau comparatif')}</p>
+                  <div className="mt-1.5 space-y-2">
+                    {(s.comparisonTable as Section[]).map((row, r) => (
+                      <div key={r} className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                        <input dir="auto" className="input-dz" aria-label={t('cmpCompareFeature', 'Critère')} placeholder={t('cmpCompareFeature', 'Critère')} value={row.feature ?? ''} onChange={(e) => editRow(i, r, { feature: e.target.value })} />
+                        <input dir="auto" className="input-dz" aria-label={t('cmpCompareOurs', 'Ton produit')} placeholder={t('cmpCompareOurs', 'Ton produit')} value={row.product ?? ''} onChange={(e) => editRow(i, r, { product: e.target.value })} />
+                        <input dir="auto" className="input-dz" aria-label={t('cmpCompareOthers', 'Les autres')} placeholder={t('cmpCompareOthers', 'Les autres')} value={row.competitor ?? ''} onChange={(e) => editRow(i, r, { competitor: e.target.value })} />
+                        <button type="button" onClick={() => removeRow(i, r)} aria-label={t('cmpCompareRemove', 'Retirer cette ligne')} className="grid size-11 place-items-center rounded-[var(--radius-sm)] text-fg-muted hover:bg-danger/10 hover:text-danger-ink"><Trash2 size={15} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </li>

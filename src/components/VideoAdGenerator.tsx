@@ -651,7 +651,7 @@ Style d'accroche / Hook de départ : ${hookType}
   return (
     <div className="mixed-dir space-y-8">
       <PageHeader
-        icon={Clapperboard}
+        section="video"
         title={t('menuVideo', 'Pubs vidéo')}
         subtitle={t('vidConfigurezProduitTraversNotre', "Configurez votre produit à travers notre studio créatif guidé, puis laissez l'IA modéliser votre publicité.")}
       />

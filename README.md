@@ -149,22 +149,85 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
 Every AI call runs on the server with the user's own Gemini key (`/api/ai/generate`, `/api/ai/video`).
 
 - **Free key** (Google AI Studio without billing): text only, about 20 requests a day per model. When one model's daily
-  quota is used up, or Google says it is overloaded, the server retries on the next model of `TEXT_MODEL_FALLBACKS`
-  (`src/lib/aiFallback.ts`). When none can answer, the user gets a plain message saying why.
-- **Key with billing:** also AI images (the landing page section images) and AI video clips (Google Veo). A free key gets
-  "billing needed" (HTTP 402) for both.
+  quota is used up, Google says it is overloaded, or it no longer offers the model to this key, the server retries on the
+  next model of `TEXT_MODEL_FALLBACKS` (`src/lib/aiFallback.ts`). When none can answer, the user gets a plain message
+  saying why (the quota answer wins over a missing model, so the message says what to do).
+- **Key with billing:** also AI images and AI video clips. A free key gets "billing needed" (HTTP 402) for both.
+  - Images (product photos, landing page section images): Nano Banana 2.1 (`gemini-nano-banana-2.1`), then
+    `gemini-3.1-flash-image` and `gemini-2.5-flash-image` (`IMAGE_MODEL_FALLBACKS`; 2.5 is closed to keys that never
+    used it and retires on 2027-03-15). The shape asked for (1:1, 4:5, 9:16) is sent as `imageConfig.aspectRatio`; the
+    server forwards only that field of `imageConfig`, so the image size and its cost stay Google's default (1K).
+  - Video clips: Gemini Omni Flash (`gemini-omni-1.1-flash`) through the Interactions API, as background jobs
+    (`src/lib/videoJobs.ts`): 720p, about $0.10 per filmed second, the cost shown before anything is filmed. Veo is no
+    longer used (Google shuts the Veo 3.1 models down on 2026-10-22).
 - A wrong, expired or blocked key gets its own message (HTTP 400).
+
+**Image services.** Gemini makes the images by default. In Paramètres → **Service d'images** the seller can choose
+another one and save its key (encrypted, never sent back, used only by the server in `POST /api/ai/image`); text and
+video always use Gemini. `src/lib/imageProviders.ts` builds each request and reads each answer:
+
+- **OpenAI**: with the product photo, `images/edits` (multipart) with `gpt-image-2.5-sunburst`; from words, `images/
+  generations` with `gpt-image-2.5-flare`; `gpt-image-2` when the account cannot use the first model. Needs credit, and
+  OpenAI may ask to verify the organization.
+- **FLUX Kontext on fal.ai**: `fal-ai/flux-pro/kontext` (photo) or its `text-to-image` version, picture returned in the
+  answer (`sync_mode`).
+- **Cloudflare Workers AI** (`flux-1-schnell`, free daily allowance): draws from words only, so the server and the pages
+  never send it a product photo, and the landing-page images and posters refuse it.
+
+These were tested against a local stand-in that follows each service's documentation (`IMAGE_PROVIDERS_BASE_URL`, used
+only outside production), not with real keys.
+
+Every section of the app has its own picture, a 3D emoji from Microsoft's Fluent Emoji set (MIT licence, kept in
+`src/assets/sections/LICENSE.txt`), shown in the menu, the dashboard's **Accès rapide** grid, each page header and the
+phone top bar (`src/lib/sections.ts`). They are 128 px WebP files (about 3 KB each), so they look the same on every
+phone and computer.
+
+**Studio Photos Produit** (Studios menu, `src/components/ProductImageGen.tsx`): with the seller's product photo, the
+image model stages that exact product in a style (lifestyle, minimalist, premium, creative) and format
+(`productPhotoPrompt` in `src/lib/productPhotoPrompt.ts`: same shape, colours, logo and printed text, no added words or
+prices). Without a photo it imagines a product from its name, and the page says so. It needs a key with billing.
 
 What the two main tools produce:
 
 - **Video ads:** the AI writes the script, then **Créer la vidéo** turns it into a real video file in the browser (MP4,
-  or WebM where the browser cannot record MP4): the product photos in motion, on-screen text, subtitles and a closing
-  price card. This step uses no AI quota. With a billed key, **AI clips** films each scene with Veo (one to a few minutes
-  per clip, billed by Google per second of video) and the video uses those clips instead of the photos.
-- **Landing pages:** the AI writes the sections, then **Page prête** turns them into one self-contained HTML file: photos,
-  colours, price and a cash-on-delivery order form (58 wilayas, Algerian mobile number check). An order opens the seller's
-  WhatsApp with every detail filled in, and can also be posted to an https address (a Google Apps Script that writes to a
-  sheet, for example). The seller uploads the file to any host.
+  or WebM where the browser cannot record MP4), in the style of today's short ads: the photos full frame with slow camera
+  moves (a photo far from the frame's shape is shown whole over a blurred copy of itself), captions that pop in word by
+  word with one word highlighted, subtitles that page through the whole voice-over line, swipe transitions and a closing
+  card where the price lands. It has background music made in the browser (`src/lib/videoMusic.ts`, no audio file and no
+  licence; it can be switched off). This step uses no AI quota. With a billed key, **AI clips** films each scene with
+  Gemini Omni from the product photo (opening, middle and final shots directed differently, music, no voice, no text),
+  the scenes take the clips' length and the finished video keeps their sound.
+- **Landing pages:** the AI writes the sections, then **Page prête** turns them into one self-contained HTML file, in one
+  of four templates (`src/lib/landingTheme.ts`, `landingStyle.ts`) coloured from the generated palette (adjusted so text
+  on buttons and badges always reads): photo gallery, price with the saving worked out from the old price, and a
+  cash-on-delivery order form (58 wilayas, Algerian mobile number check) with the order total.
+  - **Affiche** (the default, `src/lib/landingPoster.ts`): the long-image page Algerian shops use, drawn as one
+    seamless canvas: a single gradient from top to bottom (no header bar, no section blocks; a framed phone-width card
+    with rounded corners on larger screens), deep blue and yellow by default or the product's palette
+    (**Couleurs de l'affiche**). Photos run from edge to edge and melt into the canvas; round feature badges and the
+    yellow button are laid over the bottom of the first photo, with the price on a sticker; section titles sit on brush
+    bands, white with their last words in a yellow gradient; feature boxes (an icon matched to the feature's words,
+    `iconsFor` in `src/lib/landingIcons.ts`) lie over the bottom of a section's photo, or over strips of the product
+    photos when the section has none; the order form and the footer are on the same canvas. With a billed key,
+    **Créer les affiches IA** has Google draw each shown section as a poster from the product photo (2:3 for the
+    opening, 4:5 after), in the canvas colours, with the section's own (editable) headline, line, features and button
+    in the picture, one shared look and edges that join (`posterImagePrompt` in `src/lib/landingImages.ts`; it forbids
+    any other text, no prices, customer counts, ratings or reviews, and asks for large text only, since image models
+    garble small Arabic). Each poster can be redone or removed, and once they are all there they download as one long
+    JPG for a shop's product description. The publisher warns when the product photos are under 700 px wide, since
+    the canvas shows them large.
+  - **Impact**, **Élégance**, **Nuit**: classic web pages (text beside pictures), light, ivory or dark.
+  - Around any template, the seller sets the delivery price (by wilaya, free or fixed), ticks the promises the page
+    makes (58 wilayas, check before paying, guarantee; cash on delivery is always there) and can add real customer
+    reviews, as text or screenshots. An order opens the seller's WhatsApp with every detail and the total filled in,
+    and can also be posted to an https address (a Google Apps Script that writes to a sheet, for example). The seller
+    uploads the file to any host.
+  - Not published as fact, because the AI invents it: the reviews it writes (their section takes the seller's real
+    reviews or disappears), the line it writes under each button (customer counts, ratings, stock left: the seller's
+    ticked promises stand there instead) and its guarantee section (shown only when the seller offers a guarantee or a
+    check before paying). Buttons use the AI's plain call to action, not its urgency or discount lines. The rest of the
+    copy is the seller's to check: **Modifier les textes** covers titles, text, benefits, button text, guarantee and
+    comparison table, and the publisher asks the seller to read it before publishing.
 
 ## Translations
 
@@ -187,8 +250,9 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (456 in 45 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
-delivery, settings validation, pricing, translations, AI error handling, the video timeline, the landing page HTML,
+`npm test` runs the unit tests (633 in 58 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+delivery, settings validation, pricing, translations, AI error handling, the video timeline, music and AI video jobs, the
+landing page HTML, its templates, colours and order totals,
 campaign / file / brand-kit validation, ad packs, ad layouts and CSV export, the Meta payloads, budgets and login state,
 the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
 components, the Express routes and `server.ts` are **not** covered by unit tests; they were checked in a real browser
@@ -205,19 +269,26 @@ development secret. `SITE_URL` should be the public address of the site so link 
 absolute image URL.
 
 **Database update for this version:** run `npx prisma db push` once against the production database. It only adds
-tables (`projects`, `assets`, `project_outputs`, `brand_kits`, `meta_connections`) and leaves existing ones alone; read
+tables (`projects`, `assets`, `project_outputs`, `brand_kits`, `meta_connections`) and five columns to `api_settings`
+(`image_provider`, defaulting to `gemini`, and the empty key columns of the other image services), and leaves existing
+data alone; until it runs, the settings page cannot load. Read
 the plan Prisma prints before confirming, and stop if it mentions dropping or resetting anything. Campaign images are
 stored in Postgres (up to 250 MB per account), so keep an eye on the database size on small plans.
 
 ## Known gaps
 
-- The tools Consultant Expert IA, Catalogue, Scout Telegram, Studio Photos, Annonces Darja, Produits Gagnants and
-  Calendrier exist in the code but are not linked from the sidebar. Their interface text is still French only.
-- Videos made with **Créer la vidéo** have no sound (add music or a voice-over in CapCut, TikTok or Instagram). Recording
-  runs in real time, so an 18-second video takes about 18 seconds, with the tab kept open.
-- AI images and Veo clips were tested only against simulated Google answers, because the development key was a free
-  one. Watch the first real use with a billed key. On Vercel, a long Veo clip may exceed the 4.5 MB response limit of a
-  function (not tested).
+- The tools Consultant Expert IA, Catalogue, Scout Telegram, Annonces Darja, Produits Gagnants and Calendrier exist in
+  the code but are not linked from the sidebar. Their interface text is still French only.
+- Videos made with **Créer la vidéo** have music but no voice-over (Gemini Omni speaks reliably only in English; add a
+  voice in CapCut, TikTok or Instagram). Recording runs in real time, so an 18-second video takes about 18 seconds, with
+  the tab kept open.
+- AI images and Gemini Omni clips were tested against simulated Google answers, and with a free key (which Google
+  refuses, as expected); the model names were checked with Google's models API. Nothing was filmed or drawn for real:
+  watch the first real use with a billed key. On Vercel, a long clip may exceed the 4.5 MB response limit of a function
+  (not tested).
+- The landing page prompt asks the AI for testimonials, guarantees and urgency lines. The page leaves those out or
+  replaces them (see "Landing pages" above), but other AI text (paragraphs, benefits) can still invent details such as
+  delivery times or stock; only the seller can tell, so the publisher asks them to check.
 - Meta publishing has not been run against the real Graph API (no Meta app or credentials during development), and it
   needs Meta's App Review before sellers outside the app's own team can connect (see "Meta publishing").
 - The home page illustrations are drawings of the product, not screenshots. The old logo, hero and showcase pictures
