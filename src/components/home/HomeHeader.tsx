@@ -126,8 +126,8 @@ export default function HomeHeader() {
   }, []);
 
   const links: NavLink[] = [
-    { href: '#workflow', label: t('homeNavHow', 'Comment ça marche') },
-    { href: '#studios', label: t('homeNavStudios', 'Studios') },
+    { href: '#how', label: t('homeNavHow', 'Comment ça marche') },
+    { href: '#tools', label: t('homeNavStudios', 'Studios') },
     { href: '#pricing', label: t('homeNavPricing', 'Tarifs') },
     { href: '#faq', label: t('homeNavFaq', 'Questions fréquentes') },
   ];

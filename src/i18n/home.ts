@@ -73,311 +73,6 @@ export const homeTranslations: TranslationDictionary = {
     ar: "شاهد المسار",
     en: "See the workflow",
   },
-  homeDemoVideo: {
-    fr: "Vidéo",
-    ar: "الفيديو",
-    en: "Video",
-  },
-  homeDemoAds: {
-    fr: "Publicités",
-    ar: "الإعلانات",
-    en: "Ads",
-  },
-  homeDemoHeadline: {
-    fr: "Une lumière douce pour chaque soir",
-    ar: "ضوء هادئ لكل مساء",
-    en: "Soft light for every evening",
-  },
-  homeDemoOrder: {
-    fr: "Commander",
-    ar: "اطلب الآن",
-    en: "Order now",
-  },
-  homeDemoShop: {
-    fr: "Acheter",
-    ar: "اشترِ الآن",
-    en: "Shop now",
-  },
-  homeDemoScene1: {
-    fr: "Accroche",
-    ar: "عنصر الجذب",
-    en: "Hook",
-  },
-  homeDemoScene2: {
-    fr: "Démonstration",
-    ar: "التجربة",
-    en: "Demo",
-  },
-  homeDemoScene3: {
-    fr: "Offre",
-    ar: "العرض",
-    en: "Offer",
-  },
-  homeFlowTitle: {
-    fr: "Du brief à la mise en ligne, au même endroit.",
-    ar: "من الملخص إلى النشر، في مكان واحد.",
-    en: "From brief to launch, in one place.",
-  },
-  homeFlowIntro: {
-    fr: "Chaque campagne garde ses photos, son brief et toutes les versions de ses contenus : tu peux régénérer, retoucher ou revenir en arrière à tout moment.",
-    ar: "تحتفظ كل حملة بصورها وملخصها وكل نسخ محتوياتها: يمكنك إعادة الإنشاء أو التعديل أو الرجوع إلى نسخة سابقة في أي وقت.",
-    en: "Every campaign keeps its photos, its brief and every version of its content: regenerate, edit or roll back at any time.",
-  },
-  homeStep1Title: {
-    fr: "Le brief",
-    ar: "الملخص",
-    en: "The brief",
-  },
-  homeStep1Text: {
-    fr: "Ajoute jusqu’à 8 photos. L’IA peut remplir le nom, les avantages, le public et le ton à partir de la première.",
-    ar: "أضف حتى 8 صور. يمكن للذكاء الاصطناعي ملء الاسم والمزايا والجمهور والنبرة انطلاقاً من الصورة الأولى.",
-    en: "Add up to 8 photos. The AI can fill in the name, benefits, audience and tone from the first one.",
-  },
-  homeStep2Title: {
-    fr: "La génération",
-    ar: "الإنشاء",
-    en: "Generation",
-  },
-  homeStep2Text: {
-    fr: "Landing page, script vidéo et publicités partent du même brief et de ton identité de marque. Chacun peut être relancé seul.",
-    ar: "تنطلق صفحة الهبوط وسيناريو الفيديو والإعلانات من نفس الملخص ومن هوية علامتك، ويمكن إعادة إنشاء كل منها على حدة.",
-    en: "The landing page, video script and ads all start from the same brief and your brand identity. Each one can be regenerated on its own.",
-  },
-  homeStep3Title: {
-    fr: "La retouche",
-    ar: "التعديل",
-    en: "Refinement",
-  },
-  homeStep3Text: {
-    fr: "Modifie les textes, réordonne les sections, change de format. Chaque génération est gardée comme une version.",
-    ar: "عدّل النصوص، وأعد ترتيب الأقسام، وغيّر الصيغة. يُحفظ كل إنشاء كنسخة.",
-    en: "Edit the copy, reorder sections, switch formats. Every generation is kept as a version.",
-  },
-  homeStep4Title: {
-    fr: "L’export",
-    ar: "التصدير",
-    en: "Export",
-  },
-  homeStep4Text: {
-    fr: "Télécharge la page HTML, la vidéo, les visuels et les textes publicitaires en CSV.",
-    ar: "حمّل صفحة HTML والفيديو والتصاميم والنصوص الإعلانية بصيغة CSV.",
-    en: "Download the HTML page, the video, the visuals and the ad copy as CSV.",
-  },
-  homeStep4TextMeta: {
-    fr: "Télécharge tout, ou crée la campagne sur Facebook et Instagram : elle reste en pause jusqu’à ta confirmation.",
-    ar: "حمّل كل شيء، أو أنشئ الحملة على فيسبوك وإنستغرام: تبقى متوقفة حتى تؤكدها.",
-    en: "Download everything, or create the campaign on Facebook and Instagram: it stays paused until you confirm.",
-  },
-  homeStudiosTitle: {
-    fr: "Trois studios, une seule marque.",
-    ar: "ثلاثة استوديوهات، علامة واحدة.",
-    en: "Three studios, one brand.",
-  },
-  homeLandingTitle: {
-    fr: "Une page de vente prête pour le paiement à la livraison",
-    ar: "صفحة بيع جاهزة للدفع عند الاستلام",
-    en: "A sales page ready for cash on delivery",
-  },
-  homeLandingText: {
-    fr: "Des textes écrits pour ton produit et ton public, et un formulaire de commande avec les 58 wilayas. Les commandes arrivent sur ton WhatsApp ou sur ton propre webhook.",
-    ar: "نصوص مكتوبة لمنتجك وجمهورك، واستمارة طلب تضم 58 ولاية. تصلك الطلبات على واتساب أو على رابط webhook الخاص بك.",
-    en: "Copy written for your product and audience, plus an order form with all 58 wilayas. Orders arrive on your WhatsApp or your own webhook.",
-  },
-  homeLandingPoint1: {
-    fr: "Arabe et darija, français ou anglais",
-    ar: "العربية والدارجة، أو الفرنسية، أو الإنجليزية",
-    en: "Arabic and Darja, French or English",
-  },
-  homeLandingPoint2: {
-    fr: "Sections à réécrire, réordonner ou retirer",
-    ar: "أقسام يمكن إعادة كتابتها أو ترتيبها أو حذفها",
-    en: "Sections you can rewrite, reorder or remove",
-  },
-  homeLandingPoint3: {
-    fr: "Une page HTML autonome, à héberger où tu veux",
-    ar: "صفحة HTML مستقلة تستضيفها أينما شئت",
-    en: "A standalone HTML page you can host anywhere",
-  },
-  homeLandingSection1: {
-    fr: "Accroche",
-    ar: "عنصر الجذب",
-    en: "Hook",
-  },
-  homeLandingSection2: {
-    fr: "Avantages",
-    ar: "المزايا",
-    en: "Benefits",
-  },
-  homeLandingSection3: {
-    fr: "Mode d’emploi",
-    ar: "طريقة الاستعمال",
-    en: "How to use",
-  },
-  homeLandingSection4: {
-    fr: "Questions",
-    ar: "الأسئلة",
-    en: "Questions",
-  },
-  homeLandingSection5: {
-    fr: "Bon de commande",
-    ar: "استمارة الطلب",
-    en: "Order form",
-  },
-  homeLandingWilaya: {
-    fr: "Wilaya",
-    ar: "الولاية",
-    en: "Province",
-  },
-  homeLandingWilayaValue: {
-    fr: "16 · Alger",
-    ar: "16 · الجزائر",
-    en: "16 · Algiers",
-  },
-  homeVideoTitle: {
-    fr: "Un script scène par scène, puis la vidéo",
-    ar: "سيناريو مشهداً بمشهد، ثم الفيديو",
-    en: "A scene-by-scene script, then the video",
-  },
-  homeVideoText: {
-    fr: "L’IA écrit l’accroche, les scènes et le texte à l’écran. La vidéo est ensuite montée dans ton navigateur à partir de tes photos.",
-    ar: "يكتب الذكاء الاصطناعي جملة الجذب والمشاهد والنص الظاهر على الشاشة، ثم يُركَّب الفيديو في متصفحك انطلاقاً من صورك.",
-    en: "The AI writes the hook, the scenes and the on-screen text. The video is then put together in your browser from your photos.",
-  },
-  homeVideoPoint1: {
-    fr: "Formats 9:16, 4:5, 1:1 et 16:9",
-    ar: "صيغ 9:16 و4:5 و1:1 و16:9",
-    en: "9:16, 4:5, 1:1 and 16:9 formats",
-  },
-  homeVideoPoint2: {
-    fr: "Export MP4 (ou WebM selon le navigateur), sans bande son",
-    ar: "تصدير MP4 (أو WebM حسب المتصفح)، بدون صوت",
-    en: "MP4 export (or WebM depending on the browser), without sound",
-  },
-  homeVideoPoint3: {
-    fr: "Vidéo filmée par l'IA (Google Gemini) en option, avec la facturation Google",
-    ar: "فيديو يصوّره الذكاء الاصطناعي (Google Gemini) اختياري، مع تفعيل الفوترة لدى Google",
-    en: "Optional AI-filmed video (Google Gemini), with Google billing enabled",
-  },
-  homeAdsTitle: {
-    fr: "Des concepts publicitaires et leurs visuels",
-    ar: "أفكار إعلانية مع تصاميمها",
-    en: "Ad concepts with their visuals",
-  },
-  homeAdsText: {
-    fr: "Plusieurs angles, chacun avec son texte principal, son titre, sa description et son bouton d’action. Les visuels sont composés avec tes photos et tes couleurs.",
-    ar: "عدة زوايا، لكل منها نصها الرئيسي وعنوانها ووصفها وزر الإجراء الخاص بها. تُصمَّم الصور بصورك وألوانك.",
-    en: "Several angles, each with its primary text, headline, description and call-to-action button. The visuals are composed with your photos and colors.",
-  },
-  homeAdsPoint1: {
-    fr: "Carré, portrait et story, avec zone de sécurité",
-    ar: "مربع وعمودي وستوري، مع منطقة آمنة",
-    en: "Square, portrait and story, with a safe zone",
-  },
-  homeAdsPoint2: {
-    fr: "Textes exportables en CSV",
-    ar: "نصوص قابلة للتصدير بصيغة CSV",
-    en: "Copy exportable as CSV",
-  },
-  homeAdsPoint3: {
-    fr: "Visuels enregistrés dans ta bibliothèque",
-    ar: "تصاميم تُحفظ في مكتبتك",
-    en: "Visuals saved to your library",
-  },
-  homeBrandTitle: {
-    fr: "Ton identité de marque, appliquée partout",
-    ar: "هوية علامتك، في كل مكان",
-    en: "Your brand identity, everywhere",
-  },
-  homeBrandText: {
-    fr: "Logo, couleurs, polices, ton et public : l’IA les reprend dans chaque landing page, chaque script et chaque publicité.",
-    ar: "الشعار والألوان والخطوط والنبرة والجمهور: يعتمدها الذكاء الاصطناعي في كل صفحة هبوط وكل سيناريو وكل إعلان.",
-    en: "Logo, colors, fonts, tone and audience: the AI carries them into every landing page, script and ad.",
-  },
-  homeBrandTone: {
-    fr: "Chaleureux · premium",
-    ar: "دافئ · فاخر",
-    en: "Warm · premium",
-  },
-  homeLibraryTitle: {
-    fr: "Tous tes fichiers au même endroit",
-    ar: "كل ملفاتك في مكان واحد",
-    en: "All your files in one place",
-  },
-  homeLibraryText: {
-    fr: "Photos produit, logos et visuels générés, rangés par campagne et prêts à être réutilisés.",
-    ar: "صور المنتجات والشعارات والتصاميم المُنشأة، مرتبة حسب الحملة وجاهزة لإعادة الاستخدام.",
-    en: "Product photos, logos and generated visuals, sorted by campaign and ready to reuse.",
-  },
-  homeMetaTitle: {
-    fr: "Publie sur Facebook et Instagram sans perdre la main",
-    ar: "انشر على فيسبوك وإنستغرام دون أن تفقد السيطرة",
-    en: "Publish to Facebook and Instagram and stay in control",
-  },
-  homeMetaText: {
-    fr: "Connecte ton compte publicitaire avec la connexion officielle de Meta. La campagne et ses annonces sont créées en pause : tu vérifies le budget, les dates et le ciblage avant d’activer.",
-    ar: "اربط حسابك الإعلاني عبر تسجيل الدخول الرسمي من Meta. تُنشأ الحملة وإعلاناتها متوقفة: تراجع الميزانية والتواريخ والاستهداف قبل التفعيل.",
-    en: "Connect your ad account through Meta’s official login. The campaign and its ads are created paused: you check the budget, dates and targeting before turning it on.",
-  },
-  homeMetaPoint1: {
-    fr: "Connexion officielle, aucun mot de passe partagé",
-    ar: "تسجيل دخول رسمي، دون مشاركة أي كلمة مرور",
-    en: "Official login, no password shared",
-  },
-  homeMetaPoint2: {
-    fr: "Activation seulement après ta confirmation",
-    ar: "لا تفعيل إلا بعد تأكيدك",
-    en: "Turned on only after you confirm",
-  },
-  homeMetaPoint3: {
-    fr: "Statut et statistiques lus directement chez Meta",
-    ar: "الحالة والإحصائيات تُقرأ مباشرة من Meta",
-    en: "Status and stats read straight from Meta",
-  },
-  homeMetaCardTitle: {
-    fr: "Avant d’activer",
-    ar: "قبل التفعيل",
-    en: "Before going live",
-  },
-  homeMetaBudget: {
-    fr: "Budget quotidien",
-    ar: "الميزانية اليومية",
-    en: "Daily budget",
-  },
-  homeMetaCountry: {
-    fr: "Pays ciblé",
-    ar: "البلد المستهدف",
-    en: "Target country",
-  },
-  homeMetaCountryValue: {
-    fr: "Algérie",
-    ar: "الجزائر",
-    en: "Algeria",
-  },
-  homeMetaAge: {
-    fr: "Âge",
-    ar: "العمر",
-    en: "Age",
-  },
-  homeMetaStatus: {
-    fr: "Statut",
-    ar: "الحالة",
-    en: "Status",
-  },
-  homeMetaPaused: {
-    fr: "En pause",
-    ar: "متوقفة",
-    en: "Paused",
-  },
-  homeMetaCheck: {
-    fr: "J’ai vérifié ces réglages",
-    ar: "راجعتُ هذه الإعدادات",
-    en: "I have checked these settings",
-  },
-  homeMetaActivate: {
-    fr: "Activer",
-    ar: "تفعيل",
-    en: "Turn on",
-  },
   homePriceTitle: {
     fr: "Un abonnement, tous les studios.",
     ar: "اشتراك واحد، كل الاستوديوهات.",
@@ -493,11 +188,6 @@ export const homeTranslations: TranslationDictionary = {
     ar: "حملات تجارة إلكترونية بمساعدة الذكاء الاصطناعي، مصممة للجزائر.",
     en: "AI-assisted e-commerce campaigns, built for Algeria.",
   },
-  homeMenuOpen: {
-    fr: "Ouvrir le menu",
-    ar: "فتح القائمة",
-    en: "Open menu",
-  },
   homeMenuClose: {
     fr: "Fermer le menu",
     ar: "إغلاق القائمة",
@@ -507,6 +197,66 @@ export const homeTranslations: TranslationDictionary = {
     fr: "Sections",
     ar: "الأقسام",
     en: "Sections",
+  },
+  homeHeroAi: {
+    fr: "Propulsé par l’intelligence artificielle",
+    ar: "مدعوم بالذكاء الاصطناعي",
+    en: "Powered by artificial intelligence",
+  },
+  homeAiBadge: {
+    fr: "Fait par l’IA",
+    ar: "ذكاء اصطناعي",
+    en: "Made by AI",
+  },
+  homeHowKicker: {
+    fr: "Propulsé par l’IA",
+    ar: "يعمل بالذكاء الاصطناعي",
+    en: "Powered by AI",
+  },
+  homeHowTitle: {
+    fr: "Trois étapes, et l’IA fait le reste.",
+    ar: "ثلاث خطوات، والذكاء الاصطناعي يتكفّل بالباقي.",
+    en: "Three steps, and the AI does the rest.",
+  },
+  homeHowStep1Title: {
+    fr: "Ajoute la photo de ton produit",
+    ar: "أضف صورة منتجك",
+    en: "Add your product photo",
+  },
+  homeHowStep1Text: {
+    fr: "Une seule photo suffit. L’IA lit le produit et remplit le brief pour toi.",
+    ar: "صورة واحدة تكفي. يتعرّف الذكاء الاصطناعي على المنتج ويملأ الملخّص بدلاً منك.",
+    en: "One photo is enough. The AI reads the product and fills in the brief for you.",
+  },
+  homeHowStep2Title: {
+    fr: "L’IA écrit et dessine",
+    ar: "الذكاء الاصطناعي يكتب ويصمّم",
+    en: "The AI writes and designs",
+  },
+  homeHowStep2Text: {
+    fr: "Textes, script, visuels : tout est créé en quelques secondes, aux couleurs de ta marque.",
+    ar: "النصوص والسيناريو والتصاميم: كل شيء يُنشأ في ثوانٍ، بألوان علامتك.",
+    en: "Copy, script, visuals: everything is created in seconds, in your brand colors.",
+  },
+  homeHowStep3Title: {
+    fr: "Reçois ta campagne prête",
+    ar: "استلم حملتك جاهزة",
+    en: "Get your campaign ready",
+  },
+  homeHowStep3Text: {
+    fr: "Landing page, vidéo et publicités, à relire, retoucher et publier.",
+    ar: "صفحة هبوط وفيديو وإعلانات، تراجعها وتعدّلها ثم تنشرها.",
+    en: "Landing page, video and ads, to review, tweak and publish.",
+  },
+  homeHowToolsTitle: {
+    fr: "Tous tes outils, propulsés par l’IA",
+    ar: "كل أدواتك، بالذكاء الاصطناعي",
+    en: "All your tools, powered by AI",
+  },
+  homeHowPhotoStudio: {
+    fr: "Studio photo produit",
+    ar: "استوديو صور المنتجات",
+    en: "Product photo studio",
   },
 };
 

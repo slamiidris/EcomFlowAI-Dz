@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import HeroCanvas from './HeroCanvas';
+import sparkles from '../../assets/sections/sparkles.webp?no-inline';
 import '../../i18n/home';
 
 const rise = (ms: number) => ({ '--rise-delay': `${ms}ms` }) as CSSProperties;
@@ -32,6 +33,10 @@ export default function HomeHero() {
 
       <div className="relative mx-auto grid w-full max-w-[1440px] flex-1 grid-cols-1 content-start px-5 pb-10 pt-28 sm:px-8 sm:pt-32 lg:grid-cols-12 lg:content-stretch lg:gap-x-8 lg:pb-12 lg:pt-32">
         <div className="flex flex-col lg:col-span-5 lg:row-start-1 lg:justify-center lg:pb-16">
+          <p className="hero-rise mb-7 inline-flex w-fit items-center gap-2 rounded-full border border-white/12 bg-white/[0.06] py-1.5 pe-3.5 ps-1.5 text-[13px] text-fg backdrop-blur-sm" style={rise(0)}>
+            <img src={sparkles} alt="" width={128} height={128} className="size-6" />
+            {t('homeHeroAi', 'Propulsé par l’intelligence artificielle')}
+          </p>
           <h1 id="home-hero" className="hero-title hero-rise text-fg" style={rise(60)}>
             {t('homeHeroHeadline', 'Une photo. Toute la campagne.')}
           </h1>

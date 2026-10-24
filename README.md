@@ -54,7 +54,7 @@ src/lib/                   Server and shared logic: sessions, plan rules, OTP, c
                            ad packs and ad visuals (adPack, adCreative, adCreativeRender, adExport)
 src/components/projects/   The campaign workspace: list, new campaign, brief, landing / video / ads / publish tabs
 src/components/ads/, brand/, assets/, meta/   Ads studio, brand kit, file library, Meta connection
-src/components/home/       The public home page: the 3D hero (see below) and illustrations drawn in code, not screenshots
+src/components/home/       The public home page: the 3D hero (see below), then how it works in three steps with the app's 3D pictures
 src/pages/, src/components/  Other screens; one file per tool (VideoAdGenerator, LandingPageGenerator...)
 src/i18n/                  Translations, one module per area (see below)
 src/legal/                 Terms of service and privacy policy (a draft: have a lawyer review it)
@@ -292,8 +292,9 @@ stored in Postgres (up to 250 MB per account), so keep an eye on the database si
   delivery times or stock; only the seller can tell, so the publisher asks them to check.
 - Meta publishing has not been run against the real Graph API (no Meta app or credentials during development), and it
   needs Meta's App Review before sellers outside the app's own team can connect (see "Meta publishing").
-- The home page illustrations are drawings of the product, not screenshots. The old logo, hero and showcase pictures
-  (`src/images/`) are no longer used and were removed; they remain in the git history.
+- The home page shows no screenshots: its pictures are the 3D product of the hero and the Fluent 3D emoji of the app's
+  sections. The old logo, hero and showcase pictures (`src/images/`) are no longer used and were removed; they remain
+  in the git history.
 - The hidden tools Produits Gagnants and Calendrier are static previews: they now say so on screen (their figures are
   examples). Studio Photos no longer shows a random stock photo when its AI image fails, and the catalog no longer
   fills itself with sample products.
