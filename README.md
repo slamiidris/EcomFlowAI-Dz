@@ -66,8 +66,9 @@ scripts/                   Admin and maintenance scripts
 ## Home page
 
 The public home page is always dark (whatever the visitor's app theme), with the red of the Algerian flag as its one
-accent; the app keeps its own violet. Its first screen is a real-time 3D scene: a polished ring turning around a
-crystal cube, seen through a fluted glass panel, lit red from the corners.
+accent; the app keeps its own violet. Its first screen is a real-time 3D scene: a product modelled in 3D (an electric
+body massager in metallic green with a gold band and a black control panel) swinging slowly on itself, seen through a
+fluted glass panel, lit red from the corners.
 
 - **Scene:** `src/components/home/heroScene.ts` (three.js, no React). The scene is rendered into an HDR target, then a
   full-screen pass draws it through the fluted panel. The panel's extent and the object's place are read from two

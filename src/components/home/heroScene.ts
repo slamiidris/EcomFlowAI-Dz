@@ -1,6 +1,7 @@
 /**
- * The home page's 3D hero: a polished ring turning around a crystal cube (the product at the centre of its
- * campaign), seen through a fluted glass panel, in a dark room lit by deep red light.
+ * The home page's 3D hero: a product modelled in 3D (an electric body massager: green metallic body, gold band,
+ * black control panel) turning slowly on itself, seen through a fluted glass panel, in a dark room lit by deep red
+ * light.
  *
  * Two passes. The scene (a background plane, the objects) is rendered into an HDR target; a full-screen pass then
  * draws it through the fluted panel, adds the vignette, and tone-maps it to the screen. Loaded on demand (this
@@ -11,8 +12,10 @@ import {
   ACESFilmicToneMapping,
   Color,
   DoubleSide,
+  CylinderGeometry,
   Group,
   HalfFloatType,
+  LatheGeometry,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
@@ -23,12 +26,12 @@ import {
   PMREMGenerator,
   Scene,
   ShaderMaterial,
-  SphereGeometry,
   SRGBColorSpace,
   TorusGeometry,
   Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
+  type BufferGeometry,
   type Material,
   type Texture,
 } from 'three';
@@ -69,7 +72,7 @@ export interface HeroSceneOptions {
 const FOV = 30;
 const CAMERA_Z = 9;
 const BACKDROP_Z = -8;
-/** height of the object group in world units at scale 1 (the ring's outer diameter with a little air) */
+/** height of the object group in world units at scale 1 (the product's height with a little air) */
 const OBJECT_HEIGHT = 2.9;
 const INTRO_SECONDS = 1.8;
 
@@ -183,7 +186,7 @@ function buildEnvironment(renderer: WebGLRenderer): WebGLRenderTarget<Texture> {
     materials.push(material);
   };
   panel(8, 1.6, 0xffffff, 6, [0, 5.5, 0.5]); // overhead softbox
-  panel(0.6, 8, 0xffffff, 7, [-5.5, 0.5, 1.5]); // tall strips on both sides: the bright lines along the ring
+  panel(0.6, 8, 0xffffff, 7, [-5.5, 0.5, 1.5]); // tall strips on both sides: the bright lines along the product
   panel(0.4, 8, 0xffffff, 5, [5.5, 0.5, -1]);
   panel(10, 6, 0x7a7e88, 1.6, [0, 0, -7]); // grey back wall, so polished metal reads silver, not black
   panel(10, 10, 0x3a3b40, 0.9, [0, -5, 0]);
@@ -198,26 +201,74 @@ function buildEnvironment(renderer: WebGLRenderer): WebGLRenderTarget<Texture> {
   return target;
 }
 
-/** The ring is polished metal everywhere; the cube is real refractive crystal where the device can afford it. */
-function objectMaterials(transmission: boolean): { ring: MeshPhysicalMaterial; cube: MeshPhysicalMaterial } {
-  const ring = new MeshPhysicalMaterial({ color: 0xe6e8ec, metalness: 1, roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.2 });
-  if (transmission) {
-    return {
-      ring,
-      cube: new MeshPhysicalMaterial({
-        color: 0xffffff, metalness: 0, roughness: 0, transmission: 1, thickness: 1.6, ior: 2.2, dispersion: 0.8,
-        clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 2.6,
-      }),
-    };
-  }
-  // phones and weak machines: smoked crystal, no transmission pass
+/** The product's finishes: metallic green paint under a clear coat, polished gold, glossy black glass. */
+function productMaterials() {
   return {
-    ring,
-    cube: new MeshPhysicalMaterial({
-      color: 0xa4aab4, metalness: 0.4, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.9,
-      transparent: true, opacity: 0.88,
+    body: new MeshPhysicalMaterial({
+      color: 0x0b6b3c, metalness: 0.55, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.5,
     }),
+    gold: new MeshPhysicalMaterial({ color: 0xe2bd72, metalness: 1, roughness: 0.16, clearcoat: 0.6, envMapIntensity: 1.4 }),
+    black: new MeshPhysicalMaterial({ color: 0x08090a, metalness: 0.2, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.3 }),
+    rubber: new MeshStandardMaterial({ color: 0x0d0d0f, roughness: 0.85, metalness: 0 }),
+    button: new MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.35, metalness: 0.6, envMapIntensity: 1.2 }),
+    power: new MeshStandardMaterial({ color: 0x3a0306, emissive: 0xff2a2a, emissiveIntensity: 2.2, roughness: 0.3 }),
   };
+}
+
+/**
+ * The massager, standing on its base, centred on the origin and about 2.5 units tall: a turned body (bulb base,
+ * waist, tall handle with a domed top), a gold band at the waist, a black rubber pad underneath, and the control
+ * panel on its front (a dark strip, five buttons, the glossy black head at the top).
+ */
+function buildProduct(high: boolean, materials: ReturnType<typeof productMaterials>) {
+  const group = new Group();
+  const geometries: BufferGeometry[] = [];
+  const add = (geometry: BufferGeometry, material: Material, place: (m: Mesh) => void = () => {}) => {
+    geometries.push(geometry);
+    const mesh = new Mesh(geometry, material);
+    place(mesh);
+    group.add(mesh);
+    return mesh;
+  };
+  const turns = high ? 128 : 64;
+
+  // the body's outline, from the centre of the base up to the top of the dome (x = radius, y = height)
+  const profile: Vector2[] = [];
+  const point = (x: number, y: number) => profile.push(new Vector2(x, y));
+  point(0, -1.2);
+  point(0.5, -1.2);
+  // the bulb: a flattened half circle
+  for (let i = 0; i <= 14; i++) {
+    const a = -Math.PI / 2 + (i / 14) * Math.PI * 0.92;
+    point(0.5 + Math.cos(a) * 0.17, -0.98 + Math.sin(a) * 0.22);
+  }
+  // the waist rises into the gold band
+  point(0.4, -0.7);
+  point(0.31, -0.6);
+  point(0.3, -0.5);
+  // the handle, then its dome
+  point(0.3, 0.95);
+  for (let i = 1; i <= 10; i++) {
+    const a = (i / 10) * (Math.PI / 2);
+    point(Math.cos(a) * 0.3, 0.95 + Math.sin(a) * 0.3);
+  }
+  add(new LatheGeometry(profile, turns), materials.body);
+
+  add(new CylinderGeometry(0.315, 0.315, 0.14, turns), materials.gold, (m) => (m.position.y = -0.45));
+  add(new CylinderGeometry(0.47, 0.49, 0.06, turns), materials.rubber, (m) => (m.position.y = -1.22));
+
+  // the control panel sits just proud of the front of the handle
+  add(new RoundedBoxGeometry(0.24, 1.02, 0.08, high ? 4 : 2, 0.035), materials.black, (m) => m.position.set(0, 0.32, 0.27));
+  add(new RoundedBoxGeometry(0.27, 0.34, 0.12, high ? 4 : 2, 0.05), materials.black, (m) => m.position.set(0, 1.05, 0.22));
+  for (let i = 0; i < 5; i++) {
+    add(new TorusGeometry(0.052, 0.009, 12, 36), i === 0 ? materials.power : materials.button, (m) => m.position.set(0, 0.7 - i * 0.19, 0.316));
+  }
+  // the power button's lit centre
+  add(new CylinderGeometry(0.022, 0.022, 0.01, 24), materials.power, (m) => {
+    m.rotation.x = Math.PI / 2;
+    m.position.set(0, 0.7, 0.316);
+  });
+  return { group, geometries };
 }
 
 // The scene runs on the page or inside a worker (OffscreenCanvas); some workers have no requestAnimationFrame.
@@ -261,17 +312,9 @@ export function createHeroScene(canvas: HTMLCanvasElement | OffscreenCanvas, { q
   pivot.add(tilt);
   scene.add(pivot);
 
-  const materials = objectMaterials(quality.transmission);
-  const ringGeometry = new TorusGeometry(1.12, 0.26, high ? 64 : 40, high ? 220 : 140);
-  const ring = new Mesh(ringGeometry, materials.ring);
-  tilt.add(ring);
-  const cubeGeometry = new RoundedBoxGeometry(1.04, 1.04, 1.04, high ? 6 : 3, 0.085);
-  const cube = new Mesh(cubeGeometry, materials.cube);
-  tilt.add(cube);
-  const sphereGeometry = new SphereGeometry(0.17, high ? 48 : 28, high ? 32 : 20);
-  const sphereMaterial = new MeshStandardMaterial({ color: 0xa3a3a9, roughness: 0.5, metalness: 0.1, envMapIntensity: 1.2 });
-  const sphere = new Mesh(sphereGeometry, sphereMaterial);
-  pivot.add(sphere);
+  const materials = productMaterials();
+  const product = buildProduct(high, materials);
+  tilt.add(product.group);
 
   const postMaterial = new ShaderMaterial({
     vertexShader: POST_VERTEX,
@@ -336,12 +379,11 @@ export function createHeroScene(canvas: HTMLCanvasElement | OffscreenCanvas, { q
     motion.scrollShown = damp(motion.scrollShown, motion.scroll, 7, dt);
     const t = motion.time;
     const mirror = layout.rtl ? -1 : 1;
-    // the ring rocks slowly but always shows its opening (never edge-on), and the whole piece turns in the picture
-    // plane, a turn every ~100 s; the entrance arrives with a quarter turn that settles
-    ring.rotation.set(1.0 + Math.sin(t * 0.37) * 0.12, Math.sin(t * 0.23 + 1) * 0.42, 0);
-    cube.rotation.set(0.62 + t * 0.15, 0.38 - t * 0.21, 0.18);
-    tilt.rotation.z = (-0.42 + t * 0.06 - (1 - intro) * 0.9) * mirror;
-    sphere.position.set(1.05 * mirror, 1.3 + Math.sin(t * 0.9) * 0.07, -0.7);
+    // the product swings slowly on itself, its control panel always turned towards the visitor (never shown from
+    // the back), leans a little, and bobs as if floating; the entrance arrives with a half turn that settles
+    product.group.rotation.y = (Math.sin(t * 0.32) * 0.75 + (1 - intro) * Math.PI) * mirror;
+    tilt.rotation.set(0.14 + Math.sin(t * 0.27) * 0.04, 0, (-0.12 + Math.sin(t * 0.21) * 0.05) * mirror);
+    tilt.position.y = Math.sin(t * 0.9) * 0.06;
     pivot.rotation.set(-motion.y * 0.16, motion.x * 0.26 * mirror, motion.scrollShown * 0.5 * mirror);
     pivot.position.set(base.x, base.y + motion.scrollShown * base.visibleHeight * 0.22, 0);
     pivot.scale.setScalar(base.scale * (0.92 + 0.08 * intro));
@@ -428,9 +470,9 @@ export function createHeroScene(canvas: HTMLCanvasElement | OffscreenCanvas, { q
     disposed = true;
     stop();
     canvas.removeEventListener('webglcontextlost', onLost);
-    const owned: Material[] = [backdropMaterial, materials.ring, materials.cube, sphereMaterial, postMaterial];
+    const owned: Material[] = [backdropMaterial, postMaterial, ...Object.values(materials)];
     owned.forEach((m) => m.dispose());
-    [backdropGeometry, ringGeometry, cubeGeometry, sphereGeometry, postGeometry].forEach((g) => g.dispose());
+    [backdropGeometry, postGeometry, ...product.geometries].forEach((g) => g.dispose());
     environment?.dispose();
     target.dispose();
     renderer.dispose();
